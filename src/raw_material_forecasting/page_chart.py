@@ -355,19 +355,24 @@ def price_chart_png(history, *, currency: str, forecast=None, band=None, title: 
     # first of a month. The spacing now comes from how long the picture covers, and the first and
     # last days drawn are always written, so the observation window can be read off the axis
     # without reading the text.
-    kept: list[tuple[float, str, float]] = []
+    kept: list[tuple[float, str, float, float]] = []
     for when, label in (_month_ticks(first, last) if months
                         else _date_ticks(first, last, span)):
         x, wide = px(when), draw.textlength(label, font=tiny)
+        # Where the label is actually WRITTEN, which is not always centred on its tick: one at
+        # the edge of the picture is pulled inwards to stay on it. The touching test used to
+        # measure between tick centres, so a last label pulled left could sit on top of the one
+        # before it while the test said they were clear. It showed on 23 November 2026 the moment
+        # a forecast stopped ending on the 1st of a month: "Feb 27" and "22 Feb 2027", one word.
+        left = min(max(x - wide / 2, 8), width - wide - 8)
         # Where two labels would touch, the later one wins, so the last day drawn is always
         # written even when the regular spacing lands one day short of it.
-        while kept and x - kept[-1][0] < (kept[-1][2] + wide) / 2 + 16:
+        while kept and left < kept[-1][3] + kept[-1][2] + 16:
             kept.pop()
-        kept.append((x, label, wide))
-    for x, label, wide in kept:
+        kept.append((x, label, wide, left))
+    for x, label, wide, left in kept:
         draw.line([(x, top_margin), (x, height - margin_b)], fill=GRID, width=1)
-        draw.text((min(max(x - wide / 2, 8), width - wide - 8), height - margin_b + 18), label,
-                  fill=GREY, font=tiny)
+        draw.text((left, height - margin_b + 18), label, fill=GREY, font=tiny)
 
     draw.line([(margin_l, height - margin_b), (width - margin_r, height - margin_b)],
               fill=GREY, width=2)

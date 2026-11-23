@@ -258,34 +258,37 @@ def steps_for(horizon_weeks: int, frequency: str, offset_days: int = 0) -> tuple
     which is the closest honest thing the data can say. The second value is what stops that being
     passed off as four weeks.
 
-    `offset_days` is how far the last PRICE sits past the last BUCKET. The horizon belongs to the
-    reader, who is standing on the price, while the steps belong to the series, which is keyed to
-    the bucket - so the days between them are part of the distance to be covered. Left at zero the
-    answer is what it always was.
+    `offset_days` is how far the last PRICE sits past the last BUCKET.
+
+    **On a monthly series it no longer moves anything** (Stefan, 23 November 2026: "Start with next
+    month"). One, two and three months are the next three calendar months after the month the
+    price was struck in, whatever day of it that was. Three rulings got here:
+
+    30 September 2026 - a market priced on the 30th drew its one-month point on the 1st, a day
+    later, and its three-month point two months and a day out. The offset was added to the
+    distance, so late in a month every horizon moved one month further.
+
+    23 November, morning - the offset and the horizon were rounded as one sum, so each horizon
+    decided for itself whether to move. For a price struck on the 19th to the 23rd two of them
+    landed on one month: Polyether Polyol China read January, January, February. Rounding them
+    apart made it January, February, March.
+
+    23 November, afternoon - which is three different months and still no December, on a report
+    dated 23 November. A buyer standing in November is buying December. So the months are simply
+    the next three, and what 30 September was really objecting to - a point drawn the day after
+    the price and called a month ahead - is answered where it arose, in where the point is DRAWN:
+    on the price's own day of the month, one, two and three months on (see
+    `raw_material_forecasting.forecast_cards.shown_day`). The period stays the first of its month,
+    because that is the key a claim is settled against.
+
+    A weekly or daily series still counts the offset. There it is a matter of days, a step is
+    short enough for the rounding to be right, and nothing about it was ever in question.
     """
     span = PERIOD_DAYS[frequency]
     target = horizon_weeks * 7.0 + max(0, offset_days)
-    # The horizon and the offset are rounded apart, never as one sum.
-    #
-    # As one sum - round((weeks * 7 + offset) / span) - each horizon decided for itself whether the
-    # offset cost it a step. Four weeks is 0.92 of a month, so on a monthly series two horizons
-    # could round to the SAME month and the month between the price and the first of them was
-    # never forecast at all. Measured on the reports of 23 November 2026:
-    #
-    #   Polyether Polyol China, priced 20 November (19 days past its bucket):
-    #       4, 8, 12 weeks -> January, January, February
-    #   TDI China, priced 22 November (21 days past):
-    #       4, 8, 12 weeks -> January, February, February
-    #
-    # Stefan, on those reports: "it shows only one month graph, and the numbers are sometimes
-    # double." Three horizons, two months, one of them twice. Counted over every offset: it happens
-    # on a monthly series last priced on the 19th to the 23rd, so every daily-collected market,
-    # five days of every month - and the tests pinned offsets of 0, 1, 5, 10 and 29, either side.
-    #
-    # Apart, the horizon says how many periods ahead (one, two, three months) and the offset says
-    # whether the whole forecast starts a period later. Every horizon moves together or none does,
-    # so three horizons are always three consecutive periods. On a weekly or daily series the two
-    # ways of rounding give the same number, because four weeks is a whole number of both.
     ahead = max(1, round(horizon_weeks * 7.0 / span))
-    steps = ahead + round(max(0, offset_days) / span)
+    # Rounded apart from the horizon, never as one sum with it: as one sum each horizon decides
+    # for itself whether the offset costs it a step, and two of them can land on one period.
+    moved = 0 if frequency == MONTHLY else round(max(0, offset_days) / span)
+    steps = ahead + moved
     return steps, abs(steps * span - target) < 0.5

@@ -301,8 +301,12 @@ def forecast_identity(rows: Sequence[dict[str, Any]], *, identity_key: str, chem
     # How far the last price sits past the last bucket. A market collected daily and priced on the
     # 30th is 29 days past a bucket keyed to the 1st, so three monthly steps from the bucket land
     # two months and one day after the price. Stefan, 30 September 2026, looking at TDI China: the
-    # three months have to be three months. The models add this to the distance they cover; a
-    # publisher that prints on the 1st has an offset of zero and nothing about it changes.
+    # three months have to be three months.
+    #
+    # On a weekly or daily series the models add this to the distance they cover. On a monthly one
+    # they do not, since 23 November 2026: the months forecast are the next three, and the page
+    # draws each on the price's own day of its month, which is what makes three months three
+    # months without skipping the month a buyer is about to buy in. See `adapter.steps_for`.
     newest = max((_as_date(row.get("observation_date")) for row in rows
                   if _as_date(row.get("observation_date")) is not None
                   and (as_of is None or _as_date(row.get("observation_date")) <= as_of)),

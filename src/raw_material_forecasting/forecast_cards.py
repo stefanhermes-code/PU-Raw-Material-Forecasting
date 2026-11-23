@@ -442,6 +442,56 @@ class BannerContent:
         return (end.year - start.year) * 12 + end.month - start.month
 
 
+def answers_by_month(payload: dict, point: dict | None = None) -> bool:
+    """Whether this market's forecast is one figure per month.
+
+    A point the engine computed says so itself. A governed point read back from the store carries
+    no resolution, so the market's own chosen frequency answers for it - and where the series was
+    too thin to choose one, the engine fell back to months, which is what None means there.
+    """
+    stated = str((point or {}).get("resolution") or "").upper()
+    if stated:
+        return stated == "M"
+    chosen = ((payload or {}).get("resolution") or {}).get("chosen")
+    return chosen in (None, "M")
+
+
+def shown_day(period, priced_on, *, monthly: bool):
+    """The day a forecast point is drawn on and dated with. `period` itself is never changed.
+
+    A monthly forecast is filed under the first of its month, because that is the key a claim is
+    settled against when the month closes. Drawn there, a point is only "a month ahead" for a
+    market that prices on the 1st. TDI China, priced 22 November: its December figure sat on
+    1 December, nine days on, under a card headed "1 Month Forecast" - and its three-month figure
+    on 1 February, ten weeks out. Stefan said exactly this on 30 September 2026 about a price
+    struck on the 30th: three months has to be three months.
+
+    The engine answered that by moving every horizon a month further, which made the distances
+    right and dropped December from a report dated 23 November. On that day Stefan chose the
+    months - "Start with next month" - so the distance is put right here instead: the December
+    figure is drawn on 22 December, January's on 22 January, February's on 22 February. One, two
+    and three months from the price, each inside the month it speaks for.
+
+    A month too short for the day - the 31st, in February - takes its last day. A market that
+    prices on the 1st is drawn exactly where it always was. Weekly and daily forecasts are already
+    dated to the day and pass straight through.
+    """
+    import calendar
+    from datetime import date as _date
+
+    def _day(value):
+        try:
+            return _date.fromisoformat(str(value)[:10])
+        except Exception:
+            return None
+
+    filed, priced = _day(period), _day(priced_on)
+    if filed is None or priced is None or not monthly:
+        return filed
+    last = calendar.monthrange(filed.year, filed.month)[1]
+    return filed.replace(day=min(priced.day, last))
+
+
 def _month_name(value) -> str:
     """The month a horizon lands in, as a reader names it: "October 2026"."""
     from datetime import date as _date

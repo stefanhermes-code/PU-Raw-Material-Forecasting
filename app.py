@@ -1224,6 +1224,20 @@ def _card_model(payload: dict) -> str:
     return forecast_cards.card_model(payload, pinned=CARD_MODEL, chained=EUROPE_MODEL)
 
 
+def _shown_day(payload: dict, point: dict | None):
+    """The day this point is drawn on and dated with: see `forecast_cards.shown_day`.
+
+    One function for the card, the chart and the download, so the three cannot disagree about when
+    a forecast is for. Returns None when there is no point or it carries no period.
+    """
+    if not point or not point.get("period"):
+        return None
+    latest = (payload or {}).get("latest") or {}
+    return forecast_cards.shown_day(
+        point.get("period"), latest.get("date") or (payload or {}).get("as_of"),
+        monthly=forecast_cards.answers_by_month(payload, point))
+
+
 def _governed_point(payload: dict, weeks: int) -> dict | None:
     """The stored governed forecast, read by `forecast_cards.governed_point`."""
     return forecast_cards.governed_point(payload, weeks)
@@ -1291,7 +1305,7 @@ def render_unreleased_forecast_card(weeks: int, payload: dict | None = None,
         point, weeks=weeks,
         anchor=(payload or {}).get("anchor_value"),
         show=_show,
-        landing=_pretty_date((point or {}).get("period")),
+        landing=_pretty_date(_shown_day(payload or {}, point)),
         # The last price anybody printed, so the card is not 3% behind a market that moved this week
         # with nothing on it saying so.
         latest=(payload or {}).get("latest"),
@@ -1707,7 +1721,8 @@ def _build_forecast_figure(payload: dict, horizon: int, currency: str, target: s
     if not points and _forecast_history_enough(payload):
         points = [found for weeks in _FORECAST_HORIZONS if weeks <= horizon
                   if (found := _card_forecast(payload, weeks)) is not None]
-    days = [anchor_day] + [pd.to_datetime(p["period"]) for p in points]
+    # On the price's own day of each month, not the 1st: see `forecast_cards.shown_day`.
+    days = [anchor_day] + [pd.to_datetime(_shown_day(payload, p) or p["period"]) for p in points]
     middle = [anchor_value] + [_convert(p["value"]) for p in points]
 
     # Both certainties, read from the same place the banner reads them: the errors this model made
@@ -1890,7 +1905,8 @@ def forecast_export_frame(payload: dict, currency: str, target: str, table) -> p
         quantiles = point.get("quantiles") or {}
         low, high = quantiles.get("0.1"), quantiles.get("0.9")
         rows.append({
-            "Date": str(point["period"]),
+            # The day the chart draws it on, so the file and the picture give one date.
+            "Date": str(_shown_day(payload, point) or point["period"]),
             "Series": f"Forecast {int(point['horizon_weeks'])} weeks",
             price: round(_convert(point["value"]), 2),
             "Low": round(_convert(low), 2) if low is not None else "",
