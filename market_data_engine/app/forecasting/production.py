@@ -379,6 +379,27 @@ class ProductionForecastService:
                 log.warning("governed forecast band WITHHELD for %s %sw (%s): %s", identity_key,
                             horizon_weeks, chosen.method.method_key, withheld)
             vintage = session.scalar(select(ForecastVintageModel).where(ForecastVintageModel.vintage_key == vkey))
+            # A stored forecast for a DIFFERENT period is a different claim, not this one again.
+            #
+            # The vintage key is the market, the method, the slot, the data date and the lead. All
+            # five can stay the same while the month the forecast is FOR moves - which is what
+            # happens when the rule that turns a lead into periods changes. On 23 November 2026
+            # that rule changed twice (three horizons had been landing on two months; then "start
+            # with next month"), and the governed forecast for Polyether Polyol China, anchored on
+            # October, went on reading January, February, March: each night's run found the
+            # vintage written under the old rule, took it for its own, and attached a new run to
+            # it. It would have gone on doing so until November closed and the data date moved.
+            # The page, the cards and the chart all read that vintage.
+            #
+            # So where the stored period is not the period just answered, the new answer is filed
+            # under a key that says which period it is for. Every key written before this is
+            # untouched, and the old claim stays in the record to be settled like any other.
+            if vintage is not None and vintage.period is not None:
+                stored = vintage.period if vintage.period.tzinfo else vintage.period.replace(tzinfo=timezone.utc)
+                if stored != _as_datetime(point.period):
+                    vkey = f"{vkey}|for {point.period.isoformat()}"
+                    vintage = session.scalar(
+                        select(ForecastVintageModel).where(ForecastVintageModel.vintage_key == vkey))
             if vintage is None:
                 vintage = ForecastVintageModel(
                     vintage_key=vkey, identity_key=identity_key, model_key=chosen.method.method_key,

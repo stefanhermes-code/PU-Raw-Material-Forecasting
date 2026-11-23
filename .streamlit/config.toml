@@ -1,4 +1,4 @@
-﻿# Streamlit's own settings for the CUSTOMER deployment.
+# Streamlit's own settings for the CUSTOMER deployment.
 #
 # This file is written by scripts/Publish-ToStreamlitCloud.ps1 and is deliberately NOT the same as
 # the .streamlit/config.toml in the source folder, which Stefan's own session reads. The settings

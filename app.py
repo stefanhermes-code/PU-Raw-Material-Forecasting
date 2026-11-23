@@ -1224,6 +1224,36 @@ def _card_model(payload: dict) -> str:
     return forecast_cards.card_model(payload, pinned=CARD_MODEL, chained=EUROPE_MODEL)
 
 
+def _points_the_page_draws(payload: dict, model: dict | None, horizon: int) -> list[dict]:
+    """The forecast points a reader is shown, out to `horizon` weeks. One list for every surface.
+
+    THE CARDS READ THE GOVERNED ANSWER, SO THE LINE HAS TO READ IT TOO - and so does the download.
+    When the cards started reading the stored governed forecast on 22 October 2026 and the chart
+    did not, they drifted immediately: Adipic Acid Europe drew a flat line at the last price,
+    because `card_model` had fallen back to the control, while the card beside it read the
+    governed forecast. The chart was given the substitution the cards make.
+
+    The download was not. `forecast_export_frame` went on listing the pinned model's own points,
+    and the Word report is written from that frame. So for a governed market the page and the file
+    were two different forecasts. Stefan, 23 November 2026, holding the file: "it shows only one
+    month graph, and the numbers are sometimes double." Polyether Polyol China's report read
+    January, January, February; the page it was downloaded from drew January, February, March. The
+    doubling was real, and it was in the lane the page never showed him.
+
+    Same substitution at the same chokepoint, in one function now: the governed point where there
+    is one, this model's own point where there is not. And where the pinned model declined a
+    market the governed job answered, the governed points stand alone - but only where the history
+    is enough for a forecast at all.
+    """
+    points = [p for p in (model or {}).get("points", ())
+              if int(p["horizon_weeks"]) <= horizon] if model else []
+    points = [_card_forecast(payload, int(p["horizon_weeks"])) or p for p in points]
+    if not points and _forecast_history_enough(payload):
+        points = [found for weeks in _FORECAST_HORIZONS if weeks <= horizon
+                  if (found := _card_forecast(payload, weeks)) is not None]
+    return points
+
+
 def _shown_day(payload: dict, point: dict | None):
     """The day this point is drawn on and dated with: see `forecast_cards.shown_day`.
 
@@ -1704,23 +1734,9 @@ def _build_forecast_figure(payload: dict, horizon: int, currency: str, target: s
     printed_on = pd.to_datetime(latest["date"]) if latest.get("date") else None
     if printed_on is not None and printed_on >= anchor_day and latest.get("value") is not None:
         anchor_day, anchor_value = printed_on, _convert(float(latest["value"]))
-    points = [p for p in (model or {}).get("points", ())
-              if int(p["horizon_weeks"]) <= horizon] if model else []
-    # The cards read the governed answer, so the line has to read it too. This function promises
-    # above that "the line and the cards cannot drift apart"; when the cards started reading the
-    # stored governed forecast on 22 October and this did not, they drifted immediately. Adipic
-    # Acid Europe drew a flat line at the last price - `card_model` had fallen back to the control,
-    # because momentum did not beat it - while the card beside it read the governed forecast.
-    #
-    # Same substitution as the cards make, at the same chokepoint: the governed point where there
-    # is one, this model's own point where there is not.
-    points = [_card_forecast(payload, int(p["horizon_weeks"])) or p for p in points]
-    # The pinned model can decline a market the governed job answered. The card shows that answer,
-    # so a chart drawing nothing beside it would be the same drift the other way round. Drawn only
-    # where the history is enough for a forecast at all, which is what set `model` to None above.
-    if not points and _forecast_history_enough(payload):
-        points = [found for weeks in _FORECAST_HORIZONS if weeks <= horizon
-                  if (found := _card_forecast(payload, weeks)) is not None]
+    # The points the page draws, from the one place that decides them: the chart, the CSV and the
+    # report under it all ask `_points_the_page_draws`.
+    points = _points_the_page_draws(payload, model, horizon)
     # On the price's own day of each month, not the 1st: see `forecast_cards.shown_day`.
     days = [anchor_day] + [pd.to_datetime(_shown_day(payload, p) or p["period"]) for p in points]
     middle = [anchor_value] + [_convert(p["value"]) for p in points]
@@ -1901,7 +1917,9 @@ def forecast_export_frame(payload: dict, currency: str, target: str, table) -> p
                   if m.get("model") == _card_model(payload) and m.get("status") == "ok"), None)
     if not _forecast_history_enough(payload):
         model = None        # the download says what the chart says: no forecast on an indication
-    for point in (model or {}).get("points", ()):
+    # The points the chart draws, not the pinned model's own: for a governed market those are two
+    # different forecasts, and the file must say what the page says. See `_points_the_page_draws`.
+    for point in _points_the_page_draws(payload, model, max(_FORECAST_HORIZONS)):
         quantiles = point.get("quantiles") or {}
         low, high = quantiles.get("0.1"), quantiles.get("0.9")
         rows.append({
