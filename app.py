@@ -54,8 +54,29 @@ logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 # An existing environment variable wins, so a shell that set one for this run is not overridden.
 # Only strings are copied; a secrets file may hold nested tables, and those belong to whoever
 # asked for them. Nothing here prints a value.
+# Two shapes arrive here, and v1.2.98 read only one of them. A flat file:
+#
+#     DATABASE_URL = "postgresql+psycopg://..."
+#
+# and a file with the names under a heading, which is the habit DEPLOYMENT.md for the Observatory
+# product teaches:
+#
+#     [secrets]
+#     DATABASE_URL = "postgresql+psycopg://..."
+#
+# A name under a heading is a nested table, not a string, so it was skipped - silently, because
+# skipping is what the isinstance check is for. The deployment then had no DATABASE_URL, the
+# platform store fell back to an empty SQLite file, and every sign-in was refused in the same
+# words a wrong password gets. One level of nesting is now unwrapped as well.
 try:
-    for _secret_name, _secret_value in dict(st.secrets).items():
+    _secret_items = list(dict(st.secrets).items())
+    for _, _secret_value in list(_secret_items):
+        if not isinstance(_secret_value, str):
+            try:
+                _secret_items.extend(dict(_secret_value).items())
+            except Exception:           # not a table either; nothing to unwrap
+                pass
+    for _secret_name, _secret_value in _secret_items:
         if isinstance(_secret_value, str) and _secret_name not in os.environ:
             os.environ[_secret_name] = _secret_value
 except Exception:                       # no secrets file at all: this machine, which is normal
@@ -72,6 +93,7 @@ from raw_material_forecasting.intelligence.watchlists import load_watchlist
 from raw_material_forecasting.intelligence.discovery import run_watchlist_scan
 from raw_material_forecasting import collection_watch
 from raw_material_forecasting import deployment_profile
+from raw_material_forecasting.platform_store import platform_store_url
 from raw_material_forecasting import embedded_engine
 
 # A published customer deployment carries its own switches. The marker file is written by the
@@ -6978,12 +7000,45 @@ def _platform_admin_internal_renderers() -> dict[str, object]:
     }
 
 
+def _require_a_store_worth_signing_in_to() -> None:
+    """A published deployment with no store refuses everybody, and says nothing useful about it.
+
+    `platform_store_url` falls back to a SQLite file when DATABASE_URL is unset. On this machine
+    that file is the real one. In a container it is new and empty: no companies, no users, no
+    credentials. Every sign-in then fails with "that email and password do not open an account" -
+    the message deliberately written to tell a stranger nothing - and the one person who needs to
+    know what is actually wrong is the owner, standing at his own front door.
+
+    Stefan, 23 November 2026, on the first Streamlit Cloud deployment: *"My pw is not working."*
+    It was not the password. There was no store to check it against.
+
+    The container settles this in its entrypoint, which exits 78 before Streamlit ever starts.
+    Streamlit Community Cloud has no entrypoint, so the fence lives here instead.
+    """
+    if not HOSTED_DEPLOYMENT:
+        return
+    if not platform_store_url().startswith("sqlite"):
+        return
+    render_brand_header()
+    st.error(
+        "**This deployment has no store, so nobody can sign in.**\n\n"
+        "`DATABASE_URL` is not reaching the application. In the app's **Settings → Secrets**, it "
+        "has to be a line of its own at the top of the file, not under a `[section]` heading:\n\n"
+        "```toml\n"
+        'DATABASE_URL = "postgresql+psycopg://..."\n'
+        "```\n\n"
+        "Save the secrets and the app restarts by itself."
+    )
+    st.stop()
+
+
 def main() -> None:
     # The keys the application needs, from a file beside the store rather than from the project
     # folder, which is synced to OneDrive. Names only ever reach the log; values never leave here.
     secrets_file.load()
     st.set_page_config(page_title="PU Raw Material Forecasting", page_icon="📈", layout="wide", initial_sidebar_state="collapsed")
     apply_dashboard_css()
+    _require_a_store_worth_signing_in_to()
 
     if _platform_admin_route_requested():
         render_platform_admin(internal_renderers=_platform_admin_internal_renderers())
