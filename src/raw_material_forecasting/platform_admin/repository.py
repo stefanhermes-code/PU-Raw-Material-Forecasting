@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import threading
+import weakref
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, Column, Date, DateTime, Integer, MetaData, String, Table, Text, delete, insert, select, update
@@ -184,11 +186,35 @@ def _as_utc(value: datetime | None) -> datetime | None:
     return value.astimezone(timezone.utc)
 
 
+# Engines whose schema has already been settled. Weak, so an engine a test drops goes with it.
+_SCHEMA_SETTLED: "weakref.WeakSet[Engine]" = weakref.WeakSet()
+_SCHEMA_LOCK = threading.Lock()
+
+
 class PlatformAdminRepository:
     def __init__(self, engine: Engine):
         self.engine = engine
-        metadata.create_all(engine)
+        self._settle_the_schema_once()
+
+    def _settle_the_schema_once(self) -> None:
+        """`create_all` and the later columns, once per engine rather than once per page run.
+
+        Both are reflection: `create_all` asks the store which of seventeen tables exist, and
+        `_add_missing_columns` asks for one table's columns. Streamlit rebuilds this repository on
+        every click, so both ran on every click - a round trip to Supabase for an answer that
+        cannot have changed since the process started, on top of the connection the question
+        needed (Stefan, 23 November 2026: the Subscriptions page refusing to connect at all).
+
+        The schema is settled by migrations on a deployment and by this on a fresh SQLite file.
+        Either way it is settled once.
+        """
+        with _SCHEMA_LOCK:
+            if self.engine in _SCHEMA_SETTLED:
+                return
+        metadata.create_all(self.engine)
         self._add_missing_columns()
+        with _SCHEMA_LOCK:
+            _SCHEMA_SETTLED.add(self.engine)
 
     # Columns added to a table that already exists. `create_all` makes tables that are missing and
     # leaves the rest alone, so without this a store created before 31 October 2026 would be read
