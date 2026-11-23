@@ -1280,7 +1280,16 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
         st.session_state["platform_admin_customers"] = None
         st.session_state["platform_admin_market"] = None
 
-    nav_col, exit_col, close_col = st.columns([5, 2.2, 2.2], vertical_alignment="center")
+    # Closing is a thing you do to an application running on your own machine. On a published
+    # deployment the same button sends SIGTERM to the one process serving everybody, so the
+    # service goes away for every customer reading it - from a control that says it closes "this
+    # application". `app.py` registers the renderer only where there is something to close, and
+    # the bar offers the button only where the renderer exists (Stefan, 23 November 2026, asking
+    # what the admin account can reach: everything, and that was the problem).
+    closing_is_possible = callable(internal_renderers.get("Close the application"))
+    columns = [5, 2.2, 2.2] if closing_is_possible else [5, 2.2]
+    nav_col, exit_col, *rest = st.columns(columns, vertical_alignment="center")
+    close_col = rest[0] if rest else None
     with nav_col:
         st.radio(
             "Overview", [OVERVIEW], horizontal=True, label_visibility="collapsed",
@@ -1296,15 +1305,16 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
             except (KeyError, AttributeError):
                 st.query_params.clear()
             st.rerun()
-    with close_col:
-        # The same two flags `main()` sets from the top-row Close, so there is one close page, one
-        # question and one yes however you arrive. Straight to the question: a button that exists
-        # to reveal the real button is a third click on a two-click decision (Stefan, 16 October
-        # 2026: "I now need to push 3 times").
-        if st.button("Close the application", width="stretch", key="platform_admin_close"):
-            st.session_state["closing_the_application"] = True
-            st.session_state["shutdown_asked"] = True
-            st.rerun()
+    if close_col is not None:
+        with close_col:
+            # The same two flags `main()` sets from the top-row Close, so there is one close page,
+            # one question and one yes however you arrive. Straight to the question: a button that
+            # exists to reveal the real button is a third click on a two-click decision (Stefan,
+            # 16 October 2026: "I now need to push 3 times").
+            if st.button("Close the application", width="stretch", key="platform_admin_close"):
+                st.session_state["closing_the_application"] = True
+                st.session_state["shutdown_asked"] = True
+                st.rerun()
 
     # The two groups, each named. The name is the whole point: before this the bar was seven peers
     # in a wrapping row and nothing on it said which half of the work a page belonged to.

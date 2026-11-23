@@ -7102,7 +7102,9 @@ def _platform_admin_internal_renderers() -> dict[str, object]:
         "Forecasts Available": render_forecasts_available,
         "Delivered Price": render_delivered_price,
         "Investigation": render_investigation,
-        "Close the application": _close_the_application,
+        # Only where there is something to close. On a published deployment the processes this
+        # stops do not exist, and the one it would stop is the service itself - for everybody.
+        **({} if HOSTED_DEPLOYMENT else {"Close the application": _close_the_application}),
         # Two entries that are not pages: the Dashboard's market half, and one number it asks for.
         # Platform Admin draws its own commercial half and reaches the engine through these,
         # keeping its isolation from the engine intact.
@@ -7226,7 +7228,7 @@ def main() -> None:
     # Then it takes over the page: closing stops the engine, the collection run and the delivery
     # worker, and the reader should be looking at what happened rather than at a market while it
     # happens. The same renderer Platform Admin uses, so there is one of it.
-    if st.session_state.get("closing_the_application"):
+    if st.session_state.get("closing_the_application") and not HOSTED_DEPLOYMENT:
         if not st.session_state.get("shutdown_asked") and not st.session_state.get("shutdown_done"):
             # "Keep it running" was pressed. Back to where they were.
             st.session_state["closing_the_application"] = False
