@@ -1232,19 +1232,35 @@ def _authenticate(service: PlatformAdminService) -> None:
     st.stop()
 
 
+def _sign_out_of_platform_admin() -> None:
+    """Leave the admin door. One of these, however many buttons ask for it."""
+    st.session_state.pop("platform_admin_auth_email", None)
+    st.rerun()
+
+
 def render_platform_admin(internal_renderers: dict[str, object] | None = None) -> None:
     service = build_service()
     _authenticate(service)
     internal_renderers = internal_renderers or {}
 
+    # Closing is a thing you do to an application running on your own machine. On a published
+    # deployment the same button sends SIGTERM to the one process serving everybody, so `app.py`
+    # registers the renderer only where there is something to close (v1.2.104).
+    closing_is_possible = callable(internal_renderers.get("Close the application"))
+    # Stefan, 23 November 2026: *"instead of Close maybe you could have suggest to make this into a
+    # Log Out button"*. Right - the slot at the end of the bar is where the hand already goes, and
+    # on a deployment leaving is what you actually want to do there. So where there is nothing to
+    # close, that slot signs you out instead of standing empty.
+    signing_out_is_on_the_bar = login_enabled() and not closing_is_possible
+
     # Signing out stays above the title. Returning to the application does not: it sits beside the
-    # section bar, further down this function. Stefan, 4 October 2026.
-    if login_enabled():
+    # section bar, further down this function. Stefan, 4 October 2026. Unless the bar is carrying
+    # it, in which case one screen would be offering the same thing twice.
+    if login_enabled() and not signing_out_is_on_the_bar:
         signout_col, _spacer = st.columns([1.6, 6])
         with signout_col:
             if st.button("Sign out", width="stretch", key="platform_admin_signout"):
-                st.session_state.pop("platform_admin_auth_email", None)
-                st.rerun()
+                _sign_out_of_platform_admin()
 
     # The same banner and the same gauge as every other page. Both belong to `app.py`; this module
     # asks for them by name, as it does for the pages themselves.
@@ -1280,14 +1296,11 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
         st.session_state["platform_admin_customers"] = None
         st.session_state["platform_admin_market"] = None
 
-    # Closing is a thing you do to an application running on your own machine. On a published
-    # deployment the same button sends SIGTERM to the one process serving everybody, so the
-    # service goes away for every customer reading it - from a control that says it closes "this
-    # application". `app.py` registers the renderer only where there is something to close, and
-    # the bar offers the button only where the renderer exists (Stefan, 23 November 2026, asking
-    # what the admin account can reach: everything, and that was the problem).
-    closing_is_possible = callable(internal_renderers.get("Close the application"))
-    columns = [5, 2.2, 2.2] if closing_is_possible else [5, 2.2]
+    # Three columns whenever the end of the bar has something to offer: the sections, the way out,
+    # and either closing the application or signing out. Two only in development mode, where
+    # login is off and there is nothing to sign out of.
+    last_slot_is_used = closing_is_possible or signing_out_is_on_the_bar
+    columns = [5, 2.2, 2.2] if last_slot_is_used else [5, 2.2]
     nav_col, exit_col, *rest = st.columns(columns, vertical_alignment="center")
     close_col = rest[0] if rest else None
     with nav_col:
@@ -1307,14 +1320,18 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
             st.rerun()
     if close_col is not None:
         with close_col:
-            # The same two flags `main()` sets from the top-row Close, so there is one close page,
-            # one question and one yes however you arrive. Straight to the question: a button that
-            # exists to reveal the real button is a third click on a two-click decision (Stefan,
-            # 16 October 2026: "I now need to push 3 times").
-            if st.button("Close the application", width="stretch", key="platform_admin_close"):
-                st.session_state["closing_the_application"] = True
-                st.session_state["shutdown_asked"] = True
-                st.rerun()
+            if closing_is_possible:
+                # The same two flags `main()` sets from the top-row Close, so there is one close
+                # page, one question and one yes however you arrive. Straight to the question: a
+                # button that exists to reveal the real button is a third click on a two-click
+                # decision (Stefan, 16 October 2026: "I now need to push 3 times").
+                if st.button("Close the application", width="stretch",
+                             key="platform_admin_close"):
+                    st.session_state["closing_the_application"] = True
+                    st.session_state["shutdown_asked"] = True
+                    st.rerun()
+            elif st.button("Sign out", width="stretch", key="platform_admin_signout_bar"):
+                _sign_out_of_platform_admin()
 
     # The two groups, each named. The name is the whole point: before this the bar was seven peers
     # in a wrapping row and nothing on it said which half of the work a page belonged to.
