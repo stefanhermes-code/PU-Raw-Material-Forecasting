@@ -2129,8 +2129,30 @@ def _render_market_page(runtime_access: RuntimeAccess | None = None, *,
     # CHINA_DOMESTIC_SELLER_QUOTE as if they were delivery terms, because they were stored in the
     # same field; they are evidence behind the EXW market, not markets of their own.
     identities = [dict(row) for row in snapshot.identities if is_published_market(row)]
+    # Two different nothings, and until v1.2.101 they shared one sentence.
+    #
+    # Stefan, 23 November 2026, signed in with a scope of `*` on the first deployment and shown
+    # "Contact HTC Global to add markets to your subscription." With `*` that sentence cannot be
+    # true: there is no market an entitlement of everything excludes. The markets were not being
+    # withheld from him, they had not arrived - and the page blamed his subscription, which is the
+    # one explanation he could not act on.
+    #
+    # A customer seeing an empty page should be told to call us. The owner seeing an empty page
+    # needs to know the engine has nothing, because he is the one who can go and look at why.
+    published = len(identities)
     if runtime_access is not None:
         identities = [row for row in identities if identity_allowed(row, runtime_access.scope)]
+    if not identities and published == 0:
+        st.warning(
+            "The market-data engine has no markets to show yet.\n\n"
+            "Nothing is wrong with your subscription. Either the engine is still starting, or it "
+            "cannot reach the store. Reload in a minute; if it persists, the deployment's logs "
+            "will say why."
+        )
+        if snapshot.errors:
+            st.caption("The engine reported: "
+                       + "; ".join(f"{where}: {what}" for where, what in snapshot.errors.items()))
+        return
     if not identities:
         st.info("Contact HTC Global to add markets to your subscription.")
         return
