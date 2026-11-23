@@ -300,6 +300,31 @@ def _sign_out() -> None:
     st.rerun()
 
 
+def _adopt_platform_admin_as_the_signed_in_user() -> None:
+    """Somebody who proved the Platform Admin password is signed in to the application too.
+
+    Stefan, 23 November 2026: *"It says return to previous page but that is same as logout."*
+
+    It was. The two doors are separate sessions. `?admin=1` authenticates against the Platform
+    Admin password and sets `platform_admin_auth_email`; the application's own sign-in sets
+    `application_user_email`. Arrive by URL, prove the admin password, press "Return to previous
+    page", and the application finds nobody signed in and draws the sign-in screen - having just
+    been shown the strongest credential the system has.
+
+    On Stefan's machine this never showed, because there login is disabled and the gate returns
+    early. It only appears on a deployment, which is where he now works.
+
+    The admin password is a higher bar than a user password, not a lower one, so proving it is
+    proof enough for the application. The entitlement still decides what is drawn, and a forced
+    password change still applies: this says who is reading, not what they may see.
+    """
+    if _signed_in_email():
+        return
+    if st.session_state.get("platform_admin_auth_email") != PLATFORM_ADMIN_EMAIL:
+        return
+    st.session_state[SIGNED_IN_EMAIL] = PLATFORM_ADMIN_EMAIL
+
+
 def resolve_runtime_access() -> RuntimeAccess | None:
     """Who is reading, and what they are entitled to see. None when access is not being enforced.
 
@@ -312,6 +337,7 @@ def resolve_runtime_access() -> RuntimeAccess | None:
     if PLATFORM_ACCESS_MODE != "enforced":
         return None
     service = build_platform_admin_service()
+    _adopt_platform_admin_as_the_signed_in_user()
     email = _signed_in_email()
     if not email:
         email = _configured_runtime_user_email()
