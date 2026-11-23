@@ -1,0 +1,2 @@
+transaction_date,price_per_tonne,quantity_tonnes,product_family,grade,origin,destination,price_basis,packaging,currency,source_id
+2026-09-01,0,0,TDI,TDI 80/20,China,Thailand,DDP,ISO tank,USD,REPLACE_ME

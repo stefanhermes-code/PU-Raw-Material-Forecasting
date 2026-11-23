@@ -1,0 +1,28 @@
+{
+  "images": [
+    {
+      "id": "banner_tankfarm",
+      "file": "assets/photos/banner_tankfarm.png",
+      "slot": "banner",
+      "subject": "Raw material tank farm and process units",
+      "category": "Raw Materials & Tankfarm",
+      "source": "PU Visual Reference Bank",
+      "rights": "HTC Global",
+      "approved": true,
+      "approved_on": "2026-10-12",
+      "approved_by": "Stefan Hermes, in the revised template"
+    },
+    {
+      "id": "band_foam_line",
+      "file": "assets/photos/band_foam_line.png",
+      "slot": "band",
+      "subject": "Slabstock foam line, buns leaving the conveyor",
+      "category": "Slabstock Foaming Process",
+      "source": "PU Visual Reference Bank",
+      "rights": "HTC Global",
+      "approved": true,
+      "approved_on": "2026-10-12",
+      "approved_by": "Stefan Hermes, in the revised template"
+    }
+  ]
+}

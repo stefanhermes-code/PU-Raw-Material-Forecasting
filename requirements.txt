@@ -1,0 +1,47 @@
+# What the HOSTED deployment installs. The customer-facing half of the application and nothing else.
+#
+# requirements.txt is for Stefan's machine, which does everything: collects prices, reads documents,
+# fits and scores the forecasting methods, writes the publication. That list installs torch,
+# chronos, TimesFM, LightGBM and Playwright - about seven gigabytes, a browser binary, and a git
+# checkout - and a customer needs none of it.
+#
+# The hosted deployment reads. Prices, history, market intelligence and the forecast already
+# decided by the production run all come out of the one Supabase store that Stefan's machine
+# writes to. So:
+#
+#   - no Playwright, because collection does not run here (ENGINE_HOUSEKEEPING=0 in the Dockerfile);
+#   - no torch, chronos, timesfm, lightgbm or scikit-learn, because the number a customer is shown
+#     is the GOVERNED forecast - what the method in force said when the production job ran - which
+#     the engine serves from the store. Every foundation adapter imports its runtime the first time
+#     it is asked to forecast, never at module level, so where the package is absent the method
+#     answers UNAVAILABLE and the page falls back, exactly as it does on a machine without them;
+#   - no openai, pdfplumber, python-pptx, odfpy or pytesseract, because reading a document somebody
+#     sent is Stefan's work, done on Stefan's machine.
+#
+# Verified 22 November 2026: nothing in app.py, src/ or market_data_engine/app/ imports any of
+# those at module level. Keep it that way, or this file stops being safe to shorten.
+#
+# python-docx, fpdf2, pypdf and pillow stay: the customer report is a Word document, and the
+# publication reads its own PDF back. They are pure Python and small.
+
+streamlit>=1.40
+pandas>=2.0
+numpy>=1.24
+plotly>=6.5,<8  # floored and capped 5 Nov 2026; see the note in pyproject.toml
+SQLAlchemy>=2.0
+psycopg[binary]>=3.2
+requests>=2.31
+httpx>=0.27
+fastapi>=0.115
+pydantic>=2.10
+uvicorn>=0.34
+alembic>=1.14
+openpyxl>=3.1
+truststore>=0.9
+pypinyin>=0.53
+tzdata>=2025.2
+python-docx>=1.1
+fpdf2>=2.8
+pypdf>=5.0
+pillow>=10.0
+beautifulsoup4>=4.12

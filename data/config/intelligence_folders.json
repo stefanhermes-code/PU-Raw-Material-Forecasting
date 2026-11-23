@@ -1,0 +1,79 @@
+{
+  "note": "Folders the application watches for HTC Global's own weekly intelligence. The nightly round reads everything new in them without anyone clicking; the Import page reads the same folders for anything held back. Each folder lists the places it may be, and the first one that exists is used: the same application runs from a Windows desktop and from a mounted copy, and the tree above the project is not the same in both. ${HOME} is the user's home folder and ${PROJECT} is the folder the application runs from. When none of the places exist the page says so rather than showing an empty list. `rights_class` is what the documents in that folder may be used for, stated once by Stefan for a family that produces the same thing every week - the engine refuses an import without one, and a folder that states none has its prices left for the Import page rather than guessed at. Adding a report is an entry here, not a release.",
+  "folders": [
+    {
+      "name": "Global PU Industry Briefing",
+      "kind": "briefing",
+      "paths": [
+        "${HOME}/OneDrive - Foam Innovations & Solutions/Documenten/Bedrijven/HTC/PRODUCTS/12. Polyurethane Observatory/Global PU Industry Briefing",
+        "${PROJECT}/../../12. Polyurethane Observatory/Global PU Industry Briefing",
+        "${HOME}/mnt/HTC/PRODUCTS/12. Polyurethane Observatory/Global PU Industry Briefing"
+      ],
+      "patterns": [
+        "*Industry Briefing*.docx",
+        "*Industry_Briefing*.docx",
+        "*Industry Briefing*.pdf",
+        "*Industry_Briefing*.pdf"
+      ],
+      "rights_class": "INTERNAL_ONLY"
+    },
+    {
+      "name": "PU Disruption report",
+      "kind": "condition",
+      "paths": [
+        "${HOME}/OneDrive - Foam Innovations & Solutions/Documenten/Bedrijven/HTC/HTC GLOBAL INTERNAL FOLDER/Articles and LeadMagnets/PU Disruption report",
+        "${PROJECT}/../../../HTC GLOBAL INTERNAL FOLDER/Articles and LeadMagnets/PU Disruption report",
+        "${HOME}/mnt/HTC/HTC GLOBAL INTERNAL FOLDER/Articles and LeadMagnets/PU Disruption report"
+      ],
+      "patterns": [
+        "*Hormuz*.docx",
+        "*Hormuz*.pdf",
+        "*Geopolitical*Update*.docx",
+        "*Geopolitical*Update*.pdf"
+      ],
+      "rights_class": "INTERNAL_ONLY"
+    },
+    {
+      "name": "Global Pricing Report for Import",
+      "kind": "monitor",
+      "paths": [
+        "${HOME}/OneDrive - Foam Innovations & Solutions/Documenten/Bedrijven/HTC/PRODUCTS/20. Raw Material Forecasting/Global Pricing Report for Import",
+        "${PROJECT}/../Global Pricing Report for Import",
+        "${HOME}/mnt/20. Raw Material Forecasting/Global Pricing Report for Import"
+      ],
+      "patterns": [
+        "*Price Monitor*.docx",
+        "*Price_Monitor*.docx",
+        "*Price Monitor*.pdf",
+        "*Price_Monitor*.pdf"
+      ],
+      "rights_class": "INTERNAL_ONLY"
+    },
+    {
+      "name": "APBA NewsBulletin",
+      "kind": "newsletter",
+      "paths": [
+        "${HOME}/OneDrive - Foam Innovations & Solutions/Documenten/Bedrijven/HTC/PRODUCTS/4. Smart Tools/Newsletter Cloud Version/Newsletters Made",
+        "${PROJECT}/../../4. Smart Tools/Newsletter Cloud Version/Newsletters Made",
+        "${HOME}/mnt/HTC/PRODUCTS/4. Smart Tools/Newsletter Cloud Version/Newsletters Made"
+      ],
+      "patterns": [
+        "APBA_Week_*.html",
+        "APBA*NewsBulletin*.html"
+      ],
+      "rights_class": "INTERNAL_ONLY"
+    },
+    {
+      "name": "Dropped in by hand",
+      "kind": "any",
+      "paths": [
+        "${PROJECT}/Briefings"
+      ],
+      "patterns": [
+        "*.docx",
+        "*.pdf"
+      ],
+      "rights_class": ""
+    }
+  ]
+}

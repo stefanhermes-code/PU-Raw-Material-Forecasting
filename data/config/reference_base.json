@@ -1,0 +1,4 @@
+{
+  "vector_store_id": "",
+  "note": "The store that holds our own issued editions. Kept apart from any store the engine treats as independent market reference material. Set the id once it is named."
+}

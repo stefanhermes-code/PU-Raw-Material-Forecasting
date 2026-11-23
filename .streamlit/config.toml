@@ -1,0 +1,26 @@
+# Streamlit's own settings for the CUSTOMER deployment.
+#
+# This file is written by scripts/Publish-ToStreamlitCloud.ps1 and is deliberately NOT the same as
+# the .streamlit/config.toml in the source folder, which Stefan's own session reads. The settings
+# below would be wrong there: a blind traceback while developing, and a document import that
+# refuses a 3 MB PDF.
+
+[browser]
+gatherUsageStats = false
+
+[client]
+# A Python traceback on a customer's screen names our files, our tables and our query shapes.
+showErrorDetails = "none"
+toolbarMode = "minimal"
+
+[server]
+# A customer has no business uploading a document here - reading one somebody sent is Stefan's
+# work, on Stefan's machine - so two megabytes rather than Streamlit's two hundred.
+maxUploadSize = 2
+
+[theme]
+base = "light"
+primaryColor = "#008da2"
+backgroundColor = "#f8fafc"
+secondaryBackgroundColor = "#ffffff"
+textColor = "#10253c"

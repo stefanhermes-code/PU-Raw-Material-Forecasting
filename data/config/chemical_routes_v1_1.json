@@ -1,0 +1,1720 @@
+{
+  "seed_version": "V1.1",
+  "source_document": "RM_Price_Forecasting_Chemical_Routes_Model_Technical_V1.1_Crude_Oil_Backtracking.docx",
+  "nodes": [
+    {
+      "code": "ADIPIC_ACID",
+      "display_name": "Adipic acid",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "124-04-9"
+    },
+    {
+      "code": "ALIPHATIC_POLYESTER_POLYOL",
+      "display_name": "Aliphatic polyester polyol",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false
+    },
+    {
+      "code": "ANILINE",
+      "display_name": "Aniline",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "62-53-3"
+    },
+    {
+      "code": "AROMATIC_POLYESTER_POLYOL",
+      "display_name": "Aromatic polyester polyol",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false
+    },
+    {
+      "code": "BDO",
+      "display_name": "BDO",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "1,4-butanediol",
+      "cas": "110-63-4"
+    },
+    {
+      "code": "BENZENE",
+      "display_name": "Benzene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "71-43-2"
+    },
+    {
+      "code": "CARBON_MONOXIDE",
+      "display_name": "CO",
+      "price_tracked": true,
+      "root_class": "NATURAL_GAS",
+      "is_root": true,
+      "full_name": "carbon monoxide",
+      "cas": "630-08-0"
+    },
+    {
+      "code": "CAUSTIC_SODA",
+      "display_name": "Caustic soda",
+      "price_tracked": true,
+      "root_class": "BRINE",
+      "is_root": true,
+      "full_name": "sodium hydroxide",
+      "cas": "1310-73-2"
+    },
+    {
+      "code": "CHLORINE",
+      "display_name": "Chlorine",
+      "price_tracked": true,
+      "root_class": "BRINE",
+      "is_root": true,
+      "cas": "7782-50-5"
+    },
+    {
+      "code": "CRUDE_MDI",
+      "display_name": "Crude MDI",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "crude methylene diphenyl diisocyanate"
+    },
+    {
+      "code": "CRUDE_OIL",
+      "display_name": "Crude oil",
+      "price_tracked": true,
+      "root_class": "CRUDE",
+      "is_root": true
+    },
+    {
+      "code": "CUMENE",
+      "display_name": "Cumene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "isopropylbenzene",
+      "cas": "98-82-8"
+    },
+    {
+      "code": "CUMENE_HYDROPEROXIDE",
+      "display_name": "CHP",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "cumene hydroperoxide",
+      "cas": "80-15-9"
+    },
+    {
+      "code": "CYCLOHEXANE",
+      "display_name": "Cyclohexane",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "110-82-7"
+    },
+    {
+      "code": "DIETHYLENE_GLYCOL",
+      "display_name": "DEG",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "diethylene glycol",
+      "cas": "111-46-6"
+    },
+    {
+      "code": "DIMETHYLOLBUTANAL",
+      "display_name": "Dimethylolbutanal",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false
+    },
+    {
+      "code": "DIMETHYL_MALEATE",
+      "display_name": "DMM",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "dimethyl maleate",
+      "cas": "624-48-6"
+    },
+    {
+      "code": "DNT",
+      "display_name": "DNT",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "dinitrotoluene",
+      "cas": "25321-14-6"
+    },
+    {
+      "code": "EO",
+      "display_name": "EO",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "ethylene oxide",
+      "cas": "75-21-8"
+    },
+    {
+      "code": "ETHYLBENZENE",
+      "display_name": "Ethylbenzene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "100-41-4"
+    },
+    {
+      "code": "ETHYLBENZENE_HYDROPEROXIDE",
+      "display_name": "EBHP",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "ethylbenzene hydroperoxide"
+    },
+    {
+      "code": "ETHYLENE",
+      "display_name": "Ethylene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "74-85-1"
+    },
+    {
+      "code": "ETHYLENE_GLYCOL",
+      "display_name": "MEG",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "monoethylene glycol",
+      "cas": "107-21-1"
+    },
+    {
+      "code": "FORMALDEHYDE",
+      "display_name": "Formaldehyde",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "50-00-0"
+    },
+    {
+      "code": "GLYCEROL",
+      "display_name": "Glycerol",
+      "price_tracked": true,
+      "root_class": "BIOMASS",
+      "is_root": true,
+      "full_name": "glycerine",
+      "cas": "56-81-5"
+    },
+    {
+      "code": "HYDROGEN",
+      "display_name": "Hydrogen",
+      "price_tracked": true,
+      "root_class": "BRINE",
+      "is_root": true,
+      "cas": "1333-74-0"
+    },
+    {
+      "code": "HYDROGEN_CHLORIDE",
+      "display_name": "HCl",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "hydrogen chloride",
+      "cas": "7647-01-0"
+    },
+    {
+      "code": "HYDROGEN_PEROXIDE",
+      "display_name": "Hydrogen peroxide",
+      "price_tracked": true,
+      "root_class": "REVIEW",
+      "is_root": true,
+      "cas": "7722-84-1"
+    },
+    {
+      "code": "HYDROXYPIVALDEHYDE",
+      "display_name": "HPA",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "hydroxypivaldehyde"
+    },
+    {
+      "code": "ISOBUTANE",
+      "display_name": "Isobutane",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "75-28-5"
+    },
+    {
+      "code": "ISOBUTYRALDEHYDE",
+      "display_name": "Isobutyraldehyde",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "78-84-2"
+    },
+    {
+      "code": "ISOPHTHALIC_ACID",
+      "display_name": "PIA",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "purified isophthalic acid",
+      "cas": "121-91-5"
+    },
+    {
+      "code": "KA_OIL",
+      "display_name": "KA oil",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "cyclohexanone / cyclohexanol mixture"
+    },
+    {
+      "code": "MALEIC_ANHYDRIDE",
+      "display_name": "MAn",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "maleic anhydride",
+      "cas": "108-31-6"
+    },
+    {
+      "code": "MDA",
+      "display_name": "MDA",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "methylenedianiline",
+      "cas": "101-77-9"
+    },
+    {
+      "code": "METHANOL",
+      "display_name": "Methanol",
+      "price_tracked": true,
+      "root_class": "NATURAL_GAS",
+      "is_root": true,
+      "cas": "67-56-1"
+    },
+    {
+      "code": "MIXED_XYLENES",
+      "display_name": "Mixed xylenes",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "cas": "1330-20-7"
+    },
+    {
+      "code": "MONOMERIC_MDI",
+      "display_name": "MMDI",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "monomeric methylene diphenyl diisocyanate",
+      "cas": "101-68-8",
+      "aliases": [
+        "MMDI",
+        "Pure MDI"
+      ]
+    },
+    {
+      "code": "M_XYLENE",
+      "display_name": "m-Xylene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "108-38-3"
+    },
+    {
+      "code": "NITRIC_ACID",
+      "display_name": "Nitric acid",
+      "price_tracked": true,
+      "root_class": "NATURAL_GAS",
+      "is_root": true,
+      "cas": "7697-37-2"
+    },
+    {
+      "code": "NITROBENZENE",
+      "display_name": "Nitrobenzene",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "cas": "98-95-3"
+    },
+    {
+      "code": "NPG",
+      "display_name": "NPG",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "neopentyl glycol",
+      "cas": "126-30-7"
+    },
+    {
+      "code": "N_BUTANE",
+      "display_name": "n-Butane",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "106-97-8"
+    },
+    {
+      "code": "N_BUTYRALDEHYDE",
+      "display_name": "n-Butyraldehyde",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "123-72-8"
+    },
+    {
+      "code": "OXYGEN",
+      "display_name": "Oxygen",
+      "price_tracked": true,
+      "root_class": "AIR",
+      "is_root": true,
+      "cas": "7782-44-7"
+    },
+    {
+      "code": "O_XYLENE",
+      "display_name": "o-Xylene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "95-47-6"
+    },
+    {
+      "code": "PET",
+      "display_name": "PET",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "polyethylene terephthalate",
+      "cas": "25038-59-9"
+    },
+    {
+      "code": "PHOSGENE",
+      "display_name": "Phosgene",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "carbonyl dichloride",
+      "cas": "75-44-5"
+    },
+    {
+      "code": "PHTHALIC_ANHYDRIDE",
+      "display_name": "PAn",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "phthalic anhydride",
+      "cas": "85-44-9"
+    },
+    {
+      "code": "PMDI",
+      "display_name": "PMDI",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "polymeric methylene diphenyl diisocyanate",
+      "cas": "9016-87-9"
+    },
+    {
+      "code": "PO",
+      "display_name": "PO",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "propylene oxide",
+      "cas": "75-56-9"
+    },
+    {
+      "code": "POLYETHER_POLYOL",
+      "display_name": "Polyether polyol",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false
+    },
+    {
+      "code": "PROPYLENE",
+      "display_name": "Propylene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "propene",
+      "cas": "115-07-1"
+    },
+    {
+      "code": "PROPYLENE_CHLOROHYDRIN",
+      "display_name": "Propylene chlorohydrin",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false
+    },
+    {
+      "code": "PYROLYSIS_GASOLINE",
+      "display_name": "Pygas",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "pyrolysis gasoline"
+    },
+    {
+      "code": "P_XYLENE",
+      "display_name": "p-Xylene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "106-42-3"
+    },
+    {
+      "code": "REFINERY_LPG",
+      "display_name": "Refinery LPG",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "refinery liquefied petroleum gas"
+    },
+    {
+      "code": "REFINERY_NAPHTHA",
+      "display_name": "Naphtha",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "refinery naphtha"
+    },
+    {
+      "code": "REFORMATE",
+      "display_name": "Reformate",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false
+    },
+    {
+      "code": "SORBITOL",
+      "display_name": "Sorbitol",
+      "price_tracked": true,
+      "root_class": "BIOMASS",
+      "is_root": true,
+      "cas": "50-70-4"
+    },
+    {
+      "code": "STYRENE_MONOMER",
+      "display_name": "SM",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "styrene monomer",
+      "cas": "100-42-5"
+    },
+    {
+      "code": "SUCROSE",
+      "display_name": "Sucrose",
+      "price_tracked": true,
+      "root_class": "BIOMASS",
+      "is_root": true,
+      "cas": "57-50-1"
+    },
+    {
+      "code": "TDA",
+      "display_name": "TDA",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "toluenediamine",
+      "cas": "25376-45-8"
+    },
+    {
+      "code": "TDI",
+      "display_name": "TDI",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "toluene diisocyanate",
+      "cas": "26471-62-5"
+    },
+    {
+      "code": "TEREPHTHALIC_ACID",
+      "display_name": "PTA",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "purified terephthalic acid",
+      "cas": "100-21-0"
+    },
+    {
+      "code": "TERTIARY_BUTYL_ALCOHOL",
+      "display_name": "TBA",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "tert-butyl alcohol",
+      "cas": "75-65-0"
+    },
+    {
+      "code": "TERT_BUTYL_HYDROPEROXIDE",
+      "display_name": "TBHP",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "tert-butyl hydroperoxide",
+      "cas": "75-91-2"
+    },
+    {
+      "code": "TMP",
+      "display_name": "TMP",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "trimethylolpropane",
+      "cas": "77-99-6"
+    },
+    {
+      "code": "TOLUENE",
+      "display_name": "Toluene",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "cas": "108-88-3"
+    },
+    {
+      "code": "TPU",
+      "display_name": "TPU",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "thermoplastic polyurethane"
+    },
+    {
+      "code": "ACRYLONITRILE",
+      "display_name": "Acrylonitrile",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "acrylonitrile",
+      "cas": "107-13-1"
+    },
+    {
+      "code": "HR_POLYOL",
+      "display_name": "HR polyol",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "high-resilience polyether polyol"
+    },
+    {
+      "code": "GRAFT_POLYOL",
+      "display_name": "Graft polyol (POP)",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "styrene-acrylonitrile grafted polyether polyol, also called polymer polyol",
+      "aliases": [
+        "POP",
+        "POLYMER_POLYOL",
+        "POLYMER POLYOL",
+        "GRAFTED POLYOL",
+        "GRAFTED_POLYOL",
+        "聚合物多元醇"
+      ]
+    },
+    {
+      "code": "PHD_POLYOL",
+      "display_name": "PHD polyol",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "polyurea (PHD) dispersion polyether polyol",
+      "aliases": [
+        "PHD",
+        "POLYHARNSTOFF",
+        "PHD POLYOL"
+      ]
+    },
+    {
+      "code": "PIPA_POLYOL",
+      "display_name": "PIPA polyol",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "poly isocyanate poly addition polyether polyol",
+      "aliases": [
+        "PIPA",
+        "IPOL",
+        "I-POL",
+        "PIPA POLYOL"
+      ]
+    },
+    {
+      "code": "FATTY_ACID_ESTER_POLYOL",
+      "display_name": "Fatty acid ester polyol",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "dimer/fatty-acid ester polyol, renewable-based",
+      "aliases": [
+        "PRIPLAST",
+        "DIMER ACID POLYOL",
+        "FATTY ACID POLYOL"
+      ]
+    },
+    {
+      "code": "VISCO_POLYOL",
+      "display_name": "Visco polyol",
+      "price_tracked": true,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "high-EO polyether polyol for viscoelastic foam",
+      "aliases": [
+        "VISKO",
+        "VISCOELASTIC POLYOL",
+        "MEMORY FOAM POLYOL"
+      ]
+    },
+    {
+      "code": "AMMONIA",
+      "display_name": "Ammonia",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "ammonia",
+      "cas": "7664-41-7"
+    },
+    {
+      "code": "DIMER_FATTY_ACID",
+      "display_name": "Dimer fatty acid",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "dimerised fatty acid"
+    },
+    {
+      "code": "TRIETHANOLAMINE",
+      "display_name": "Triethanolamine",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "triethanolamine",
+      "cas": "102-71-6"
+    },
+    {
+      "code": "HYDRAZINE",
+      "display_name": "Hydrazine",
+      "price_tracked": false,
+      "root_class": null,
+      "is_root": false,
+      "full_name": "hydrazine hydrate",
+      "cas": "302-01-2"
+    }
+  ],
+  "edges": [
+    {
+      "route_id": "OIL-REF-01",
+      "from_chemical": "CRUDE_OIL",
+      "relation": "REFINED_TO",
+      "to_chemical": "REFINERY_NAPHTHA",
+      "technical_qualifier": "Petroleum fraction used as petrochemical feedstock"
+    },
+    {
+      "route_id": "OIL-REF-01",
+      "from_chemical": "CRUDE_OIL",
+      "relation": "REFINED_TO",
+      "to_chemical": "REFINERY_LPG",
+      "technical_qualifier": "Refinery C3/C4 stream; crude-oil route"
+    },
+    {
+      "route_id": "OIL-SC-01",
+      "from_chemical": "REFINERY_NAPHTHA",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ETHYLENE",
+      "technical_qualifier": "Steam cracking; crude-oil route"
+    },
+    {
+      "route_id": "OIL-SC-01",
+      "from_chemical": "REFINERY_NAPHTHA",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PROPYLENE",
+      "technical_qualifier": "Steam cracking; crude-oil route"
+    },
+    {
+      "route_id": "OIL-SC-01",
+      "from_chemical": "REFINERY_NAPHTHA",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PYROLYSIS_GASOLINE",
+      "technical_qualifier": "Steam-cracker aromatic-rich coproduct stream"
+    },
+    {
+      "route_id": "OIL-REFORM-01",
+      "from_chemical": "REFINERY_NAPHTHA",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "REFORMATE",
+      "technical_qualifier": "Catalytic reforming"
+    },
+    {
+      "route_id": "AROM-REFORM-01",
+      "from_chemical": "REFORMATE",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "BENZENE",
+      "technical_qualifier": "Aromatics extraction / separation"
+    },
+    {
+      "route_id": "AROM-REFORM-01",
+      "from_chemical": "REFORMATE",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "TOLUENE",
+      "technical_qualifier": "Aromatics extraction / separation"
+    },
+    {
+      "route_id": "AROM-REFORM-01",
+      "from_chemical": "REFORMATE",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "MIXED_XYLENES",
+      "technical_qualifier": "Aromatics extraction / separation"
+    },
+    {
+      "route_id": "AROM-PYGAS-01",
+      "from_chemical": "PYROLYSIS_GASOLINE",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "BENZENE",
+      "technical_qualifier": "Pygas hydrogenation/extraction route"
+    },
+    {
+      "route_id": "AROM-PYGAS-01",
+      "from_chemical": "PYROLYSIS_GASOLINE",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "TOLUENE",
+      "technical_qualifier": "Pygas hydrogenation/extraction route"
+    },
+    {
+      "route_id": "AROM-PYGAS-01",
+      "from_chemical": "PYROLYSIS_GASOLINE",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "MIXED_XYLENES",
+      "technical_qualifier": "Pygas hydrogenation/extraction route"
+    },
+    {
+      "route_id": "XYL-SEP-01",
+      "from_chemical": "MIXED_XYLENES",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "O_XYLENE",
+      "technical_qualifier": "Isomer separation"
+    },
+    {
+      "route_id": "XYL-SEP-01",
+      "from_chemical": "MIXED_XYLENES",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "M_XYLENE",
+      "technical_qualifier": "Isomer separation"
+    },
+    {
+      "route_id": "XYL-SEP-01",
+      "from_chemical": "MIXED_XYLENES",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "P_XYLENE",
+      "technical_qualifier": "Isomer separation"
+    },
+    {
+      "route_id": "LPG-C4-01",
+      "from_chemical": "REFINERY_LPG",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "N_BUTANE",
+      "technical_qualifier": "Refinery crude-oil route; NGL route also exists"
+    },
+    {
+      "route_id": "LPG-C4-01",
+      "from_chemical": "REFINERY_LPG",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "ISOBUTANE",
+      "technical_qualifier": "Refinery crude-oil route; NGL route also exists"
+    },
+    {
+      "route_id": "ADIPIC-01",
+      "from_chemical": "BENZENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "CYCLOHEXANE",
+      "technical_qualifier": "Hydrogenation with H2"
+    },
+    {
+      "route_id": "ADIPIC-01",
+      "from_chemical": "HYDROGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "CYCLOHEXANE",
+      "technical_qualifier": "Benzene hydrogenation"
+    },
+    {
+      "route_id": "ADIPIC-01",
+      "from_chemical": "CYCLOHEXANE",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "KA_OIL",
+      "technical_qualifier": "Air oxidation to cyclohexanol/cyclohexanone mixture"
+    },
+    {
+      "route_id": "ADIPIC-01",
+      "from_chemical": "OXYGEN",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "KA_OIL",
+      "technical_qualifier": "Air oxidation"
+    },
+    {
+      "route_id": "ADIPIC-01",
+      "from_chemical": "KA_OIL",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "ADIPIC_ACID",
+      "technical_qualifier": "Nitric-acid oxidation"
+    },
+    {
+      "route_id": "ADIPIC-01",
+      "from_chemical": "NITRIC_ACID",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "ADIPIC_ACID",
+      "technical_qualifier": "Conventional industrial oxidation route"
+    },
+    {
+      "route_id": "EO-GLY-01",
+      "from_chemical": "EO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ETHYLENE_GLYCOL",
+      "technical_qualifier": "EO hydration"
+    },
+    {
+      "route_id": "EO-GLY-01",
+      "from_chemical": "EO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "DIETHYLENE_GLYCOL",
+      "technical_qualifier": "Higher glycol product from EO hydration"
+    },
+    {
+      "route_id": "OXO-ALD-01",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ISOBUTYRALDEHYDE",
+      "technical_qualifier": "Hydroformylation / oxo route"
+    },
+    {
+      "route_id": "OXO-ALD-01",
+      "from_chemical": "CARBON_MONOXIDE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ISOBUTYRALDEHYDE",
+      "technical_qualifier": "Hydroformylation"
+    },
+    {
+      "route_id": "OXO-ALD-01",
+      "from_chemical": "HYDROGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ISOBUTYRALDEHYDE",
+      "technical_qualifier": "Hydroformylation"
+    },
+    {
+      "route_id": "OXO-ALD-01",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "N_BUTYRALDEHYDE",
+      "technical_qualifier": "Hydroformylation / oxo route"
+    },
+    {
+      "route_id": "NPG-01",
+      "from_chemical": "ISOBUTYRALDEHYDE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "HYDROXYPIVALDEHYDE",
+      "technical_qualifier": "Aldol condensation with formaldehyde"
+    },
+    {
+      "route_id": "NPG-01",
+      "from_chemical": "FORMALDEHYDE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "HYDROXYPIVALDEHYDE",
+      "technical_qualifier": "Aldol condensation"
+    },
+    {
+      "route_id": "NPG-01",
+      "from_chemical": "HYDROXYPIVALDEHYDE",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "NPG",
+      "technical_qualifier": "Hydrogenation route"
+    },
+    {
+      "route_id": "NPG-01",
+      "from_chemical": "HYDROGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "NPG",
+      "technical_qualifier": "Hydrogenation route"
+    },
+    {
+      "route_id": "TMP-01",
+      "from_chemical": "N_BUTYRALDEHYDE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "DIMETHYLOLBUTANAL",
+      "technical_qualifier": "Condensation with formaldehyde"
+    },
+    {
+      "route_id": "TMP-01",
+      "from_chemical": "FORMALDEHYDE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "DIMETHYLOLBUTANAL",
+      "technical_qualifier": "Condensation"
+    },
+    {
+      "route_id": "TMP-01",
+      "from_chemical": "DIMETHYLOLBUTANAL",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "TMP",
+      "technical_qualifier": "Hydrogenation route"
+    },
+    {
+      "route_id": "TMP-01",
+      "from_chemical": "HYDROGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "TMP",
+      "technical_qualifier": "Hydrogenation route"
+    },
+    {
+      "route_id": "BDO-MA-01",
+      "from_chemical": "N_BUTANE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "MALEIC_ANHYDRIDE",
+      "technical_qualifier": "Gas-phase oxidation; crude-oil refinery route shown"
+    },
+    {
+      "route_id": "BDO-MA-01",
+      "from_chemical": "OXYGEN",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "MALEIC_ANHYDRIDE",
+      "technical_qualifier": "Oxidation"
+    },
+    {
+      "route_id": "BDO-MA-01",
+      "from_chemical": "MALEIC_ANHYDRIDE",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "DIMETHYL_MALEATE",
+      "technical_qualifier": "Esterification with methanol"
+    },
+    {
+      "route_id": "BDO-MA-01",
+      "from_chemical": "METHANOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "DIMETHYL_MALEATE",
+      "technical_qualifier": "Esterification"
+    },
+    {
+      "route_id": "BDO-MA-01",
+      "from_chemical": "DIMETHYL_MALEATE",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "BDO",
+      "technical_qualifier": "Multi-step hydrogenation"
+    },
+    {
+      "route_id": "BDO-MA-01",
+      "from_chemical": "HYDROGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "BDO",
+      "technical_qualifier": "Hydrogenation route"
+    },
+    {
+      "route_id": "PES-AROM-OX",
+      "from_chemical": "O_XYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PHTHALIC_ANHYDRIDE",
+      "technical_qualifier": "Catalytic air oxidation"
+    },
+    {
+      "route_id": "PES-AROM-MX",
+      "from_chemical": "M_XYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ISOPHTHALIC_ACID",
+      "technical_qualifier": "Oxidation route"
+    },
+    {
+      "route_id": "PES-AROM-PX",
+      "from_chemical": "P_XYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "TEREPHTHALIC_ACID",
+      "technical_qualifier": "Oxidation / PTA route"
+    },
+    {
+      "route_id": "PET-01",
+      "from_chemical": "TEREPHTHALIC_ACID",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PET",
+      "technical_qualifier": "Polycondensation with ethylene glycol"
+    },
+    {
+      "route_id": "PET-01",
+      "from_chemical": "ETHYLENE_GLYCOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PET",
+      "technical_qualifier": "MEG feedstock"
+    },
+    {
+      "route_id": "PO-CHPO",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PROPYLENE_CHLOROHYDRIN",
+      "technical_qualifier": "Chlorohydrin route"
+    },
+    {
+      "route_id": "PO-CHPO",
+      "from_chemical": "CHLORINE",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "PROPYLENE_CHLOROHYDRIN",
+      "technical_qualifier": "Chlorine + water route"
+    },
+    {
+      "route_id": "PO-CHPO",
+      "from_chemical": "PROPYLENE_CHLOROHYDRIN",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "PO",
+      "technical_qualifier": "Dehydrochlorination with base"
+    },
+    {
+      "route_id": "PO-HPPO",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PO",
+      "technical_qualifier": "HPPO route"
+    },
+    {
+      "route_id": "PO-HPPO",
+      "from_chemical": "HYDROGEN_PEROXIDE",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "PO",
+      "technical_qualifier": "HPPO route"
+    },
+    {
+      "route_id": "PO-POSM",
+      "from_chemical": "BENZENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ETHYLBENZENE",
+      "technical_qualifier": "Alkylation with ethylene"
+    },
+    {
+      "route_id": "PO-POSM",
+      "from_chemical": "ETHYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ETHYLBENZENE",
+      "technical_qualifier": "Alkylation with benzene"
+    },
+    {
+      "route_id": "PO-POSM",
+      "from_chemical": "ETHYLBENZENE",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "ETHYLBENZENE_HYDROPEROXIDE",
+      "technical_qualifier": "Air oxidation"
+    },
+    {
+      "route_id": "PO-POSM",
+      "from_chemical": "ETHYLBENZENE_HYDROPEROXIDE",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "PO",
+      "technical_qualifier": "Epoxidation of propylene"
+    },
+    {
+      "route_id": "PO-POSM",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PO",
+      "technical_qualifier": "POSM route"
+    },
+    {
+      "route_id": "PO-TBA",
+      "from_chemical": "ISOBUTANE",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "TERT_BUTYL_HYDROPEROXIDE",
+      "technical_qualifier": "Oxidation"
+    },
+    {
+      "route_id": "PO-TBA",
+      "from_chemical": "TERT_BUTYL_HYDROPEROXIDE",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "PO",
+      "technical_qualifier": "Epoxidation of propylene"
+    },
+    {
+      "route_id": "PO-TBA",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PO",
+      "technical_qualifier": "PO/TBA route"
+    },
+    {
+      "route_id": "PO-CHPPO",
+      "from_chemical": "BENZENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "CUMENE",
+      "technical_qualifier": "Alkylation with propylene"
+    },
+    {
+      "route_id": "PO-CHPPO",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "CUMENE",
+      "technical_qualifier": "Alkylation with benzene"
+    },
+    {
+      "route_id": "PO-CHPPO",
+      "from_chemical": "CUMENE",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "CUMENE_HYDROPEROXIDE",
+      "technical_qualifier": "Air oxidation"
+    },
+    {
+      "route_id": "PO-CHPPO",
+      "from_chemical": "CUMENE_HYDROPEROXIDE",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "PO",
+      "technical_qualifier": "Epoxidation of propylene"
+    },
+    {
+      "route_id": "PO-CHPPO",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PO",
+      "technical_qualifier": "CHPPO route"
+    },
+    {
+      "route_id": "PHOS-01",
+      "from_chemical": "CHLORINE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PHOSGENE",
+      "technical_qualifier": "Direct reaction with carbon monoxide"
+    },
+    {
+      "route_id": "PHOS-01",
+      "from_chemical": "CARBON_MONOXIDE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PHOSGENE",
+      "technical_qualifier": "Direct reaction with chlorine"
+    },
+    {
+      "route_id": "CHLOR-01",
+      "from_chemical": "CHLORINE",
+      "relation": "CO_PRODUCT_OF",
+      "to_chemical": "CAUSTIC_SODA",
+      "technical_qualifier": "Chlor-alkali electrolysis",
+      "mass_coefficient": 1.1283,
+      "mass_basis": "2 x NaOH 40.00 / Cl2 70.90; fixed electrolysis ratio"
+    },
+    {
+      "route_id": "CHLOR-01",
+      "from_chemical": "CHLORINE",
+      "relation": "CO_PRODUCT_OF",
+      "to_chemical": "HYDROGEN",
+      "technical_qualifier": "Chlor-alkali electrolysis"
+    },
+    {
+      "route_id": "CHLOR-01",
+      "from_chemical": "CAUSTIC_SODA",
+      "relation": "CO_PRODUCT_OF",
+      "to_chemical": "HYDROGEN",
+      "technical_qualifier": "Chlor-alkali electrolysis"
+    },
+    {
+      "route_id": "TDI-01",
+      "from_chemical": "TOLUENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "DNT",
+      "technical_qualifier": "Nitration",
+      "mass_coefficient": 0.5059,
+      "mass_basis": "toluene 92.14 / DNT 182.13"
+    },
+    {
+      "route_id": "TDI-01",
+      "from_chemical": "NITRIC_ACID",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "DNT",
+      "technical_qualifier": "Nitration"
+    },
+    {
+      "route_id": "TDI-01",
+      "from_chemical": "DNT",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "TDA",
+      "technical_qualifier": "Hydrogenation",
+      "mass_coefficient": 1.4908,
+      "mass_basis": "DNT 182.13 / TDA 122.17"
+    },
+    {
+      "route_id": "TDI-01",
+      "from_chemical": "HYDROGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "TDA",
+      "technical_qualifier": "Hydrogenation"
+    },
+    {
+      "route_id": "TDI-01",
+      "from_chemical": "TDA",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "TDI",
+      "technical_qualifier": "Phosgenation",
+      "mass_coefficient": 0.7015,
+      "mass_basis": "TDA 122.17 / TDI 174.16"
+    },
+    {
+      "route_id": "TDI-01",
+      "from_chemical": "PHOSGENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "TDI",
+      "technical_qualifier": "Phosgenation",
+      "mass_coefficient": 1.136,
+      "mass_basis": "2 x phosgene 98.92 / TDI 174.16"
+    },
+    {
+      "route_id": "TDI-01",
+      "from_chemical": "TDI",
+      "relation": "CO_PRODUCT_OF",
+      "to_chemical": "HYDROGEN_CHLORIDE",
+      "technical_qualifier": "Phosgenation step"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "BENZENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "NITROBENZENE",
+      "technical_qualifier": "Nitration",
+      "mass_coefficient": 0.6345,
+      "mass_basis": "benzene 78.11 / nitrobenzene 123.11"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "NITRIC_ACID",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "NITROBENZENE",
+      "technical_qualifier": "Nitration"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "NITROBENZENE",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "ANILINE",
+      "technical_qualifier": "Hydrogenation",
+      "mass_coefficient": 1.3219,
+      "mass_basis": "nitrobenzene 123.11 / aniline 93.13"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "HYDROGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ANILINE",
+      "technical_qualifier": "Hydrogenation"
+    },
+    {
+      "route_id": "FORM-01",
+      "from_chemical": "METHANOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "FORMALDEHYDE",
+      "technical_qualifier": "Conventional oxidation route"
+    },
+    {
+      "route_id": "FORM-01",
+      "from_chemical": "OXYGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "FORMALDEHYDE",
+      "technical_qualifier": "Conventional oxidation route"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "ANILINE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "MDA",
+      "technical_qualifier": "Acid-catalysed condensation",
+      "mass_coefficient": 0.9395,
+      "mass_basis": "2 x aniline 93.13 / MDA 198.26"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "FORMALDEHYDE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "MDA",
+      "technical_qualifier": "Acid-catalysed condensation",
+      "mass_coefficient": 0.1515,
+      "mass_basis": "formaldehyde 30.03 / MDA 198.26"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "HYDROGEN_CHLORIDE",
+      "relation": "CATALYST_FOR",
+      "to_chemical": "MDA",
+      "technical_qualifier": "HCl-catalysed condensation"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "CAUSTIC_SODA",
+      "relation": "PROCESS_REAGENT_FOR",
+      "to_chemical": "MDA",
+      "technical_qualifier": "Neutralisation after condensation"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "MDA",
+      "relation": "INTERMEDIATE_OF",
+      "to_chemical": "CRUDE_MDI",
+      "technical_qualifier": "Phosgenation",
+      "mass_coefficient": 0.7922,
+      "mass_basis": "MDA 198.26 / monomeric MDI 250.25"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "PHOSGENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "CRUDE_MDI",
+      "technical_qualifier": "Phosgenation",
+      "mass_coefficient": 0.7906,
+      "mass_basis": "2 x phosgene 98.92 / monomeric MDI 250.25"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "CRUDE_MDI",
+      "relation": "CO_PRODUCT_OF",
+      "to_chemical": "HYDROGEN_CHLORIDE",
+      "technical_qualifier": "Phosgenation step"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "CRUDE_MDI",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "PMDI",
+      "technical_qualifier": "MDI split / fractionation"
+    },
+    {
+      "route_id": "MDI-01",
+      "from_chemical": "CRUDE_MDI",
+      "relation": "SEPARATED_TO",
+      "to_chemical": "MONOMERIC_MDI",
+      "technical_qualifier": "Pure/monomeric MDI fraction"
+    },
+    {
+      "route_id": "EO-01",
+      "from_chemical": "ETHYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "EO",
+      "technical_qualifier": "Catalytic oxidation"
+    },
+    {
+      "route_id": "EO-01",
+      "from_chemical": "OXYGEN",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "EO",
+      "technical_qualifier": "Catalytic oxidation"
+    },
+    {
+      "route_id": "PO-CORE",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PO",
+      "technical_qualifier": "Common feedstock across commercial PO routes"
+    },
+    {
+      "route_id": "PO-POSM",
+      "from_chemical": "PO",
+      "relation": "CO_PRODUCT_OF",
+      "to_chemical": "STYRENE_MONOMER",
+      "technical_qualifier": "POSM route only"
+    },
+    {
+      "route_id": "PO-TBA",
+      "from_chemical": "PO",
+      "relation": "CO_PRODUCT_OF",
+      "to_chemical": "TERTIARY_BUTYL_ALCOHOL",
+      "technical_qualifier": "PO/TBA route only"
+    },
+    {
+      "route_id": "POLYETHER",
+      "from_chemical": "PO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "POLYETHER_POLYOL",
+      "technical_qualifier": "PO-based polyurethane polyols",
+      "mass_coefficient": 0.9693,
+      "mass_basis": "the balance of an MW3000 triol after its glycerol initiator"
+    },
+    {
+      "route_id": "POLYETHER",
+      "from_chemical": "EO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "POLYETHER_POLYOL",
+      "technical_qualifier": "EO-containing or EO-capped grades"
+    },
+    {
+      "route_id": "POLYETHER",
+      "from_chemical": "GLYCEROL",
+      "relation": "STARTER_FOR",
+      "to_chemical": "POLYETHER_POLYOL",
+      "technical_qualifier": "Common triol starter",
+      "mass_coefficient": 0.0307,
+      "mass_basis": "glycerol 92.09 initiator in an MW3000 triol"
+    },
+    {
+      "route_id": "POLYETHER",
+      "from_chemical": "TMP",
+      "relation": "STARTER_FOR",
+      "to_chemical": "POLYETHER_POLYOL",
+      "technical_qualifier": "Selected triol grades"
+    },
+    {
+      "route_id": "POLYETHER-RIGID",
+      "from_chemical": "SUCROSE",
+      "relation": "STARTER_FOR",
+      "to_chemical": "POLYETHER_POLYOL",
+      "technical_qualifier": "Higher-functionality rigid grades"
+    },
+    {
+      "route_id": "POLYETHER-RIGID",
+      "from_chemical": "SORBITOL",
+      "relation": "STARTER_FOR",
+      "to_chemical": "POLYETHER_POLYOL",
+      "technical_qualifier": "Higher-functionality rigid grades"
+    },
+    {
+      "route_id": "PES-ALIPH",
+      "from_chemical": "ADIPIC_ACID",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ALIPHATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Major aliphatic diacid route",
+      "mass_coefficient": 0.5793,
+      "mass_basis": "adipic 146.14 of the 146.14 + DEG 106.12 charged"
+    },
+    {
+      "route_id": "PES-ALIPH",
+      "from_chemical": "ETHYLENE_GLYCOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ALIPHATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Glycol feedstock; grade-specific"
+    },
+    {
+      "route_id": "PES-ALIPH",
+      "from_chemical": "DIETHYLENE_GLYCOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ALIPHATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Glycol feedstock; grade-specific",
+      "mass_coefficient": 0.4207,
+      "mass_basis": "DEG 106.12 of the adipic 146.14 + 106.12 charged"
+    },
+    {
+      "route_id": "PES-ALIPH",
+      "from_chemical": "BDO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ALIPHATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Glycol feedstock; grade-specific"
+    },
+    {
+      "route_id": "PES-ALIPH",
+      "from_chemical": "NPG",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ALIPHATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Glycol feedstock; grade-specific"
+    },
+    {
+      "route_id": "PES-AROM",
+      "from_chemical": "PHTHALIC_ANHYDRIDE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "AROMATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Aromatic polyester route"
+    },
+    {
+      "route_id": "PES-AROM",
+      "from_chemical": "DIETHYLENE_GLYCOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "AROMATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Common glycol feedstock"
+    },
+    {
+      "route_id": "PES-AROM-PET",
+      "from_chemical": "PET",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "AROMATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "PET glycolysis route"
+    },
+    {
+      "route_id": "PES-AROM",
+      "from_chemical": "TEREPHTHALIC_ACID",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "AROMATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Alternative aromatic acid feedstock"
+    },
+    {
+      "route_id": "PES-AROM",
+      "from_chemical": "ISOPHTHALIC_ACID",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "AROMATIC_POLYESTER_POLYOL",
+      "technical_qualifier": "Alternative aromatic acid feedstock"
+    },
+    {
+      "route_id": "TPU-MDI",
+      "from_chemical": "MONOMERIC_MDI",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "TPU",
+      "technical_qualifier": "Common aromatic TPU route"
+    },
+    {
+      "route_id": "TPU-ETHER",
+      "from_chemical": "POLYETHER_POLYOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "TPU",
+      "technical_qualifier": "TPU-grade polyether diol"
+    },
+    {
+      "route_id": "TPU-ESTER",
+      "from_chemical": "ALIPHATIC_POLYESTER_POLYOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "TPU",
+      "technical_qualifier": "TPU-grade aliphatic polyester diol"
+    },
+    {
+      "route_id": "TPU-MDI",
+      "from_chemical": "BDO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "TPU",
+      "technical_qualifier": "Common short-chain diol / chain extender"
+    },
+    {
+      "route_id": "POLYETHER-HR",
+      "from_chemical": "PO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "HR_POLYOL",
+      "technical_qualifier": "PO backbone"
+    },
+    {
+      "route_id": "POLYETHER-HR",
+      "from_chemical": "EO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "HR_POLYOL",
+      "technical_qualifier": "EO cap, high primary hydroxyl content"
+    },
+    {
+      "route_id": "POLYETHER-HR",
+      "from_chemical": "GLYCEROL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "HR_POLYOL",
+      "technical_qualifier": "Common triol starter"
+    },
+    {
+      "route_id": "GRAFT",
+      "from_chemical": "POLYETHER_POLYOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "GRAFT_POLYOL",
+      "technical_qualifier": "Base polyol the copolymer is grown in"
+    },
+    {
+      "route_id": "GRAFT",
+      "from_chemical": "STYRENE_MONOMER",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "GRAFT_POLYOL",
+      "technical_qualifier": "Copolymer monomer"
+    },
+    {
+      "route_id": "GRAFT",
+      "from_chemical": "ACRYLONITRILE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "GRAFT_POLYOL",
+      "technical_qualifier": "Copolymer monomer"
+    },
+    {
+      "route_id": "PHD",
+      "from_chemical": "POLYETHER_POLYOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PHD_POLYOL",
+      "technical_qualifier": "Base polyol the dispersion is grown in"
+    },
+    {
+      "route_id": "PHD",
+      "from_chemical": "TDI",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PHD_POLYOL",
+      "technical_qualifier": "Forms the polyurea with an amine"
+    },
+    {
+      "route_id": "PIPA",
+      "from_chemical": "POLYETHER_POLYOL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PIPA_POLYOL",
+      "technical_qualifier": "Base polyol the solids are grown in"
+    },
+    {
+      "route_id": "PIPA",
+      "from_chemical": "TDI",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PIPA_POLYOL",
+      "technical_qualifier": "Forms the polyurethane solid with an alkanolamine"
+    },
+    {
+      "route_id": "POLYETHER-VISCO",
+      "from_chemical": "PO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "VISCO_POLYOL",
+      "technical_qualifier": "PO backbone"
+    },
+    {
+      "route_id": "POLYETHER-VISCO",
+      "from_chemical": "EO",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "VISCO_POLYOL",
+      "technical_qualifier": "High EO content, which is what makes it visco"
+    },
+    {
+      "route_id": "POLYETHER-VISCO",
+      "from_chemical": "GLYCEROL",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "VISCO_POLYOL",
+      "technical_qualifier": "Common starter"
+    },
+    {
+      "route_id": "ACN-01",
+      "from_chemical": "PROPYLENE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ACRYLONITRILE",
+      "technical_qualifier": "Ammoxidation"
+    },
+    {
+      "route_id": "ACN-01",
+      "from_chemical": "AMMONIA",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "ACRYLONITRILE",
+      "technical_qualifier": "Ammoxidation"
+    },
+    {
+      "route_id": "FATTY-ESTER",
+      "from_chemical": "DIMER_FATTY_ACID",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "FATTY_ACID_ESTER_POLYOL",
+      "technical_qualifier": "The characteristic diacid"
+    },
+    {
+      "route_id": "FATTY-ESTER",
+      "from_chemical": "ADIPIC_ACID",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "FATTY_ACID_ESTER_POLYOL",
+      "technical_qualifier": "Co-acid in the part-renewable grades"
+    },
+    {
+      "route_id": "PHD",
+      "from_chemical": "HYDRAZINE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PHD_POLYOL",
+      "technical_qualifier": "Reacts with TDI to form the polyurea"
+    },
+    {
+      "route_id": "PIPA",
+      "from_chemical": "TRIETHANOLAMINE",
+      "relation": "FEEDSTOCK_OF",
+      "to_chemical": "PIPA_POLYOL",
+      "technical_qualifier": "Reacts with TDI to form the polyurethane solid"
+    }
+  ],
+  "seed_note": "HYDROGEN_PEROXIDE -> PO appears in both section 4.1 and section 4.2 of the V1.1 document under route PO-HPPO; stored once. HR polyol, graft polyol and POP added 17 September 2026 on Stefan's instruction. POP is the same material as graft polyol and is carried as an alias of it, not as a second series. PHD and PIPA polyol added 18 September 2026: four polymer polyol chemistries appear in FNAG's own purchase history - SAN graft, SAN 10, PHD and PIPA - and PHD trades about 500 EUR/MT above the SAN grafts, so they are not one series. Fatty acid ester polyol and visco polyol added 18 September 2026: a different product is a different series, and Priplast 3186 trades at twice Ester 60 while the visco grades run 500 EUR/MT above conventional polyether. | 19 September 2026: per-step mass coefficients added to the isocyanate and polyol backbone. Each is derived from molar masses and carries its own derivation in mass_basis, so any of them can be rechecked without trusting this file. They are PER STEP: multiplied along a route they reproduce the route-level figures circulated on 19 September - toluene to TDI 0.5291 against 0.53, benzene to monomeric MDI 0.6243 against 0.62. Writing a route-level figure onto a single edge would double count.",
+  "raw_materials": [
+    "TDI",
+    "PMDI",
+    "MONOMERIC_MDI",
+    "POLYETHER_POLYOL",
+    "ALIPHATIC_POLYESTER_POLYOL",
+    "AROMATIC_POLYESTER_POLYOL",
+    "HR_POLYOL",
+    "GRAFT_POLYOL",
+    "PHD_POLYOL",
+    "PIPA_POLYOL",
+    "FATTY_ACID_ESTER_POLYOL",
+    "VISCO_POLYOL"
+  ]
+}

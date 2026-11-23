@@ -1,0 +1,13 @@
+{
+  "material": "pMDI",
+  "geography": "China",
+  "context_anchor": "polymeric MDI OR pMDI OR MDI polyurethane",
+  "queries": [
+    "China polymeric MDI price",
+    "China pMDI price",
+    "MDI China shutdown maintenance force majeure",
+    "MDI China price increase"
+  ],
+  "official_domains": ["whchem.com", "basf.com", "covestro.com", "huntsman.com", "dow.com"],
+  "secondary_domains": ["sunsirs.com"]
+}
