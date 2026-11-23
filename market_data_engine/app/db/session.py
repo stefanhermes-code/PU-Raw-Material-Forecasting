@@ -22,9 +22,42 @@ from app.config import Settings
 BUSY_TIMEOUT_MS = 10_000
 
 
+# The engine's share of the pooler's client sessions, stated here rather than imported from the
+# application: this package is a service of its own and does not reach into the one in front of it.
+# The two shares are sized together - see raw_material_forecasting.platform_store, which holds the
+# measurement and the rest of the reasoning.
+#
+# Measured on the live store, 23 November 2026, while the deployment was refusing to connect:
+#   FATAL: (EMAXCONNSESSION) max clients reached in session mode
+#          - max clients are limited to pool_size: 15
+# Fifteen for everything that connects at once. SQLAlchemy's default of five plus ten overflow
+# would take the lot on its own.
+POOL_SIZE = 3
+MAX_OVERFLOW = 2
+# Supabase's transaction-mode pooler cannot promise the same server connection twice, so psycopg's
+# prepared statements have to be off there. Moving the URL to :6543 is then the whole of it.
+TRANSACTION_POOLER_PORT = ":6543"
+
+
+def _postgres_pool(url: str = "") -> dict:
+    settings: dict = {
+        "pool_pre_ping": True,
+        "pool_recycle": 1800,
+        "pool_size": POOL_SIZE,
+        "max_overflow": MAX_OVERFLOW,
+        "pool_timeout": 10,
+    }
+    if TRANSACTION_POOLER_PORT in url:
+        settings["connect_args"] = {"prepare_threshold": None}
+    return settings
+
+
 def create_db_engine(database_url: str | None = None):
     url = database_url or Settings().database_url
-    engine = create_engine(url, pool_pre_ping=True)
+    if url.startswith("sqlite"):
+        engine = create_engine(url, pool_pre_ping=True)
+    else:
+        engine = create_engine(url, **_postgres_pool(url))
     if engine.dialect.name == "sqlite":
         _configure_sqlite(engine)
     return engine
