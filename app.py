@@ -684,8 +684,89 @@ def _forecast_readiness() -> dict:
         return {}
 
 
+def _draw_gauge_panel(percent: int, title: str, subtitle: str, *, complete: bool) -> None:
+    """The instrument itself, so one panel can be read by two different things.
+
+    A machine that collects reads a run in progress. A published deployment collects nothing and
+    reads what the store already holds. Same needle, same words under it, one piece of markup.
+    """
+    panel_state = "complete" if complete else "running"
+    st.markdown(
+        f"""
+        <div class="collection-progress-panel {panel_state}" style="--pct:{percent}">
+          <div class="collection-instrument" style="--pct:{percent}">
+            <div class="collection-gauge"></div>
+            <div class="collection-needle"></div>
+            <div class="collection-readout">{percent}%</div>
+          </div>
+          <div class="collection-progress-copy" style="--pct:{percent}">
+            <div class="collection-progress-title">{title}</div>
+            <div class="collection-progress-sub">{subtitle}</div>
+            <div class="collection-progress-line"><span></span></div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+def _newest_published_price_day() -> tuple[bool, str | None]:
+    """Whether the engine answered, and the newest priced reading day in the store.
+
+    Read off the index snapshot the market page loads anyway - four fields per reading and no
+    prices, just whether each one carries a price - so this costs no egress of its own.
+    """
+    snapshot = _load_step6_snapshot(readings="index")
+    if snapshot is None:
+        return False, None
+    days = [str(row.get("observation_date") or row.get("publication_date") or "")
+            for row in getattr(snapshot, "observations", None) or []
+            if row.get("price") is not None]
+    days = [day for day in days if day]
+    return True, max(days) if days else None
+
+
+def _render_published_store_gauge() -> None:
+    """The gauge on a deployment that collects nothing itself.
+
+    The gauge was built for a machine that collects: the daily run writes its progress beside the
+    store and the needle follows it. A published deployment has no such run - `ENGINE_HOUSEKEEPING`
+    and `FORECAST_WARM_UP` are off there by `deployment_profile`, and nothing writes the progress
+    file - so the needle read a file that was not there as "nought per cent, still running" and
+    announced "Refreshing current market evidence in the background" above a store that was already
+    complete.
+
+    Stefan, 23 November 2026, signed in as the owner on the first live deployment: *"the gauge is at
+    0%, how does this match with your test of the Duroflex account?"* It did not match it at all.
+    The customer page drew a real price out of Supabase while the needle above it said the data had
+    not arrived yet.
+
+    So on a published deployment the needle answers the question a reader there actually has: how
+    current is the data I am looking at. HTC Global collects into the store; this deployment reads it.
+    """
+    answered, newest = _newest_published_price_day()
+    if not answered:
+        _draw_gauge_panel(0, "Market data loading",
+                          "The market data is still being read. Reload the page in a moment.",
+                          complete=False)
+        return
+    if not newest:
+        _draw_gauge_panel(0, "No market prices published yet",
+                          "The store this deployment reads holds no priced market yet.",
+                          complete=False)
+        return
+    _draw_gauge_panel(100, "Market data up to date",
+                      f"Newest price in the store: {_pretty_date(newest)}. "
+                      "New prices appear here within fifteen minutes of being published.",
+                      complete=True)
+
+
 @st.fragment(run_every="1s")
 def render_collection_progress_gauge() -> None:
+    if HOSTED_DEPLOYMENT:
+        # Nothing collects on a published deployment, so there is no run for a needle to follow.
+        _render_published_store_gauge()
+        return
     percent, state, payload = load_collection_progress_payload()
     complete = state == "complete" and percent >= 100
     title = "Market data updated" if complete else "Updating market data"
@@ -720,24 +801,7 @@ def render_collection_progress_gauge() -> None:
         title = "Preparing forecasts"
         subtitle = "Almost ready."
 
-    panel_state = "complete" if complete else "running"
-    st.markdown(
-        f"""
-        <div class="collection-progress-panel {panel_state}" style="--pct:{percent}">
-          <div class="collection-instrument" style="--pct:{percent}">
-            <div class="collection-gauge"></div>
-            <div class="collection-needle"></div>
-            <div class="collection-readout">{percent}%</div>
-          </div>
-          <div class="collection-progress-copy" style="--pct:{percent}">
-            <div class="collection-progress-title">{title}</div>
-            <div class="collection-progress-sub">{subtitle}</div>
-            <div class="collection-progress-line"><span></span></div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    _draw_gauge_panel(percent, title, subtitle, complete=complete)
     # When the run finishes, draw the page again - once.
     #
     # Stefan, 7 October 2026: "After the data has loaded, I need to refresh every time to get the
@@ -2144,13 +2208,16 @@ def _render_market_page(runtime_access: RuntimeAccess | None = None, *,
         identities = [row for row in identities if identity_allowed(row, runtime_access.scope)]
     if not identities and published == 0:
         st.warning(
-            "The market-data engine has no markets to show yet.\n\n"
-            "Nothing is wrong with your subscription. Either the engine is still starting, or it "
-            "cannot reach the store. Reload in a minute; if it persists, the deployment's logs "
-            "will say why."
+            "No market prices have loaded yet.\n\n"
+            "Nothing is wrong with your subscription. The market data is still being read, or "
+            "it cannot be reached from here. Reload in a minute; if it keeps saying this, "
+            "contact HTC Global."
         )
-        if snapshot.errors:
-            st.caption("The engine reported: "
+        # What exactly could not be read is the owner's business and not the reader's: he is
+        # the one who can go and look at why (Stefan, 23 November 2026, the same page in both
+        # doors).
+        if snapshot.errors and _signed_in_email() == PLATFORM_ADMIN_EMAIL:
+            st.caption("Owner only: "
                        + "; ".join(f"{where}: {what}" for where, what in snapshot.errors.items()))
         return
     if not identities:
