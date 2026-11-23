@@ -1,4 +1,3 @@
-# release 1.2.111 - this line changes on every publish so the host restarts the engine too
 # What the HOSTED deployment installs. The customer-facing half of the application and nothing else.
 #
 # requirements.txt is for Stefan's machine, which does everything: collects prices, reads documents,
