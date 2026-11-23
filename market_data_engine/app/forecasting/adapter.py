@@ -265,5 +265,27 @@ def steps_for(horizon_weeks: int, frequency: str, offset_days: int = 0) -> tuple
     """
     span = PERIOD_DAYS[frequency]
     target = horizon_weeks * 7.0 + max(0, offset_days)
-    steps = max(1, round(target / span))
+    # The horizon and the offset are rounded apart, never as one sum.
+    #
+    # As one sum - round((weeks * 7 + offset) / span) - each horizon decided for itself whether the
+    # offset cost it a step. Four weeks is 0.92 of a month, so on a monthly series two horizons
+    # could round to the SAME month and the month between the price and the first of them was
+    # never forecast at all. Measured on the reports of 23 November 2026:
+    #
+    #   Polyether Polyol China, priced 20 November (19 days past its bucket):
+    #       4, 8, 12 weeks -> January, January, February
+    #   TDI China, priced 22 November (21 days past):
+    #       4, 8, 12 weeks -> January, February, February
+    #
+    # Stefan, on those reports: "it shows only one month graph, and the numbers are sometimes
+    # double." Three horizons, two months, one of them twice. Counted over every offset: it happens
+    # on a monthly series last priced on the 19th to the 23rd, so every daily-collected market,
+    # five days of every month - and the tests pinned offsets of 0, 1, 5, 10 and 29, either side.
+    #
+    # Apart, the horizon says how many periods ahead (one, two, three months) and the offset says
+    # whether the whole forecast starts a period later. Every horizon moves together or none does,
+    # so three horizons are always three consecutive periods. On a weekly or daily series the two
+    # ways of rounding give the same number, because four weeks is a whole number of both.
+    ahead = max(1, round(horizon_weeks * 7.0 / span))
+    steps = ahead + round(max(0, offset_days) / span)
     return steps, abs(steps * span - target) < 0.5
