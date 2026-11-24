@@ -33,8 +33,10 @@ from raw_material_forecasting.platform_admin.records import (
     read_flag,
     read_list,
     read_text,
+    form_mark,
     reason_fields,
     record_tabs,
+    show_flash,
     required,
     safe_action,
     scope_cells,
@@ -257,18 +259,32 @@ def _as_utc(d: date, t: time = time.min) -> datetime:
     return datetime.combine(d, t, tzinfo=timezone.utc)
 
 
+def _choices(label: str, options, held, key: str) -> list[str]:
+    """A multiselect that can show everything the record holds, listed or not.
+
+    A value the record holds and the list does not offer has to be on the list for the form to be
+    drawn at all - Streamlit refuses a default that is not an option - and the one field that
+    guarded against that did it by leaving the value out, so saving the form removed it. The owner
+    account's entitlement holds the function "*", for everything: opening it and pressing Save
+    would have taken that away without a word (found 24 November 2026).
+    """
+    held = sorted(held)
+    offered = [*options, *(value for value in held if value not in options)]
+    return st.multiselect(label, offered, default=held, key=key)
+
+
 def _scope_editor(prefix: str, default: EntitlementScope | None = None) -> EntitlementScope:
     default = default or EntitlementScope()
     app_access = st.checkbox("Application access", value=default.application_access, key=f"{prefix}_app")
-    features = st.multiselect("Functions", FEATURE_OPTIONS, default=[item for item in default.features if item in FEATURE_OPTIONS], key=f"{prefix}_features")
-    chemicals = st.multiselect("Chemicals", CHEMICAL_OPTIONS, default=list(default.chemicals), key=f"{prefix}_chemicals")
-    geographies = st.multiselect("Geographies", GEOGRAPHY_OPTIONS, default=list(default.geographies), key=f"{prefix}_geographies")
-    incoterms = st.multiselect("Incoterms", INCOTERM_OPTIONS, default=list(default.incoterms), key=f"{prefix}_incoterms")
-    packaging = st.multiselect("Packaging", PACKAGING_OPTIONS, default=list(default.packaging), key=f"{prefix}_packaging")
+    features = _choices("Functions", FEATURE_OPTIONS, default.features, f"{prefix}_features")
+    chemicals = _choices("Chemicals", CHEMICAL_OPTIONS, default.chemicals, f"{prefix}_chemicals")
+    geographies = _choices("Geographies", GEOGRAPHY_OPTIONS, default.geographies, f"{prefix}_geographies")
+    incoterms = _choices("Incoterms", INCOTERM_OPTIONS, default.incoterms, f"{prefix}_incoterms")
+    packaging = _choices("Packaging", PACKAGING_OPTIONS, default.packaging, f"{prefix}_packaging")
     horizon = st.number_input("Forecast horizon (months)", min_value=0, max_value=36, value=int(default.forecast_horizon_months), key=f"{prefix}_horizon")
-    report_formats = st.multiselect("Report/data formats", REPORT_FORMAT_OPTIONS, default=list(default.report_formats), key=f"{prefix}_formats")
-    frequencies = st.multiselect("Delivery frequencies", FREQUENCY_OPTIONS, default=list(default.delivery_frequencies), key=f"{prefix}_freqs")
-    channels = st.multiselect("Delivery channels", CHANNEL_OPTIONS, default=list(default.delivery_channels), key=f"{prefix}_channels")
+    report_formats = _choices("Report/data formats", REPORT_FORMAT_OPTIONS, default.report_formats, f"{prefix}_formats")
+    frequencies = _choices("Delivery frequencies", FREQUENCY_OPTIONS, default.delivery_frequencies, f"{prefix}_freqs")
+    channels = _choices("Delivery channels", CHANNEL_OPTIONS, default.delivery_channels, f"{prefix}_channels")
     return EntitlementScope(
         application_access=app_access,
         features=frozenset(features),
@@ -435,7 +451,7 @@ def _render_companies(service: PlatformAdminService) -> None:
     def form(editing: Company | None) -> None:
         # Rebuilt when the choice changes - the key carries the id - so the fields show what is
         # stored rather than what the last render left behind.
-        mark = editing.company_id if editing else "new"
+        mark = form_mark(editing.company_id if editing else None)
         with st.form(f"company_form_{mark}"):
             company_id = st.text_input(
                 "Company ID / code", value=editing.company_id if editing else "", placeholder="e.g. sf",
@@ -452,11 +468,14 @@ def _render_companies(service: PlatformAdminService) -> None:
             has_end = st.checkbox(
                 "Contract has end date", key=f"company_has_end_{mark}",
                 value=bool(editing and editing.contract_effective_to))
+            # Never greyed out. Inside a form a tick does nothing until Save, so a date that waited
+            # for the tick could not be typed at all: the contract got an end date a year out
+            # whether or not that was the date.
             effective_to = st.date_input(
-                "Contract effective to", key=f"company_to_{mark}",
+                "Contract effective to (used only when the box above is ticked)",
+                key=f"company_to_{mark}",
                 value=(editing.contract_effective_to if editing and editing.contract_effective_to
-                       else date.today() + timedelta(days=365)),
-                disabled=not has_end)
+                       else date.today() + timedelta(days=365)))
             actor, reason = _reason_fields(f"company_{mark}")
             submitted = st.form_submit_button(
                 "Save changes" if editing else "Create company", type="primary")
@@ -497,7 +516,7 @@ def _render_packages(service: PlatformAdminService) -> None:
     packages = service.repo.list_packages()
 
     def form(editing: CommercialPackage | None) -> None:
-        mark = editing.package_id if editing else "new"
+        mark = form_mark(editing.package_id if editing else None)
         with st.form(f"package_form_{mark}"):
             package_id = st.text_input(
                 "Package ID", value=editing.package_id if editing else "", disabled=editing is not None,
@@ -558,7 +577,7 @@ def _render_permanent(service: PlatformAdminService) -> None:
     packages = service.repo.list_packages()
 
     def form(editing: CompanyEntitlement | None) -> None:
-        mark = editing.entitlement_id if editing else "new"
+        mark = form_mark(editing.entitlement_id if editing else None)
         if editing is None and packages:
             st.markdown("**Seed from package template**")
             with st.form("seed_package_form"):
@@ -577,7 +596,7 @@ def _render_permanent(service: PlatformAdminService) -> None:
             package_ref = st.text_input("Originating package ID (optional)", key=f"perm_pkg_{mark}", value=(editing.package_id or "") if editing else "")
             effective_from = st.date_input("Effective from", key=f"perm_from_{mark}", value=editing.effective_from.date() if editing else date.today())
             has_end = st.checkbox("Entitlement has end date", key=f"perm_has_end_{mark}", value=editing.effective_to is not None if editing else False)
-            effective_to = st.date_input("Effective to", key=f"perm_to_{mark}", value=editing.effective_to.date() if editing and editing.effective_to else date.today() + timedelta(days=365), disabled=not has_end)
+            effective_to = st.date_input("Effective to (used only when the box above is ticked)", key=f"perm_to_{mark}", value=editing.effective_to.date() if editing and editing.effective_to else date.today() + timedelta(days=365))
             scope = _scope_editor(f"permanent_{mark}", editing.scope if editing else None)
             actor, reason = _reason_fields(f"permanent_{mark}")
             if st.form_submit_button("Save contractual entitlement", type="primary"):
@@ -631,7 +650,7 @@ def _render_temporary(service: PlatformAdminService) -> None:
     grants = service.repo.list_temporary_entitlements(company_id)
 
     def form(editing: TemporaryEntitlement | None) -> None:
-        mark = editing.entitlement_id if editing else "new"
+        mark = form_mark(editing.entitlement_id if editing else None)
         with st.form(f"temporary_form_{mark}"):
             entitlement_id = st.text_input("Temporary entitlement ID", key=f"temp_id_{mark}", value=editing.entitlement_id if editing else f"temp-{company_id}-{uuid4().hex[:8]}")
             reason_type = st.selectbox("Reason type", TEMPORARY_REASONS, key=f"temp_type_{mark}",
@@ -689,7 +708,7 @@ def _render_users(service: PlatformAdminService) -> None:
     users = service.repo.list_users(company_id)
 
     def form(editing: UserAccess | None) -> None:
-        mark = editing.user_id if editing else "new"
+        mark = form_mark(editing.user_id if editing else None)
         with st.form(f"user_form_{mark}"):
             user_id = st.text_input(
                 "User ID", value=editing.user_id if editing else f"user-{uuid4().hex[:8]}",
@@ -826,7 +845,7 @@ def _render_recipients(service: PlatformAdminService) -> None:
     recipients = service.repo.list_recipients(company_id)
 
     def form(editing: Recipient | None) -> None:
-        mark = editing.recipient_id if editing else "new"
+        mark = form_mark(editing.recipient_id if editing else None)
         with st.form(f"recipient_form_{mark}"):
             recipient_id = st.text_input(
                 "Recipient ID", value=editing.recipient_id if editing else f"rec-{uuid4().hex[:8]}",
@@ -890,7 +909,7 @@ def _render_delivery_profiles(service: PlatformAdminService) -> None:
     frequencies = FREQUENCY_OPTIONS[:-1]
 
     def form(editing: DeliveryProfile | None) -> None:
-        mark = editing.profile_id if editing else "new"
+        mark = form_mark(editing.profile_id if editing else None)
         with st.form(f"delivery_form_{mark}"):
             profile_id = st.text_input(
                 "Profile ID", value=editing.profile_id if editing else f"profile-{uuid4().hex[:8]}",
@@ -1347,6 +1366,8 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
     )
     section = st.session_state["platform_admin_page"]
     st.divider()
+    # What the last save or delete did, said once, above the page it changed.
+    show_flash()
 
     # Closing takes over the page, as it does in the application. "Keep it running" clears
     # `shutdown_asked`, and this puts the reader back on the section they were looking at.

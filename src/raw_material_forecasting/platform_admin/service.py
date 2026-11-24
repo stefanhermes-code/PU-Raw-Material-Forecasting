@@ -95,6 +95,19 @@ class PlatformAdminService:
             return value.replace(tzinfo=timezone.utc)
         return value.astimezone(timezone.utc)
 
+    def _who_and_why(self, actor: str, reason: str) -> None:
+        """Asked for BEFORE anything is written. Every write that is recorded starts here.
+
+        Each of these used to write the record and then write the change history, and it is the
+        change history that insists on a name and a reason. So a save without a reason was refused
+        on the screen and had already happened in the store - the one kind of change this module
+        exists to prevent, an unrecorded one (found 24 November 2026).
+        """
+        if not str(actor or "").strip():
+            raise ConfigurationError("Fill in 'Changed by' before saving. Nothing was changed.")
+        if not str(reason or "").strip():
+            raise ConfigurationError("Give a change reason before saving. Nothing was changed.")
+
     def _audit(self, *, company_id: str, entity_type: str, entity_id: str, action: str,
                actor: str, old_value, new_value, reason: str, effective_date: date | None = None) -> AuditRecord:
         if not actor.strip():
@@ -155,6 +168,7 @@ class PlatformAdminService:
         )
 
     def create_company(self, company: Company, *, actor: str, reason: str) -> Company:
+        self._who_and_why(actor, reason)
         old = self.repo.get_company(company.company_id)
         self.repo.upsert_company(company)
         self._audit(
@@ -165,6 +179,7 @@ class PlatformAdminService:
         return company
 
     def save_package(self, package: CommercialPackage, *, actor: str, reason: str) -> CommercialPackage:
+        self._who_and_why(actor, reason)
         old = self.repo.get_package(package.package_id)
         self.repo.upsert_package(package)
         self._audit(
@@ -175,6 +190,7 @@ class PlatformAdminService:
         return package
 
     def set_permanent_entitlement(self, entitlement: CompanyEntitlement, *, actor: str, reason: str) -> CompanyEntitlement:
+        self._who_and_why(actor, reason)
         if not self.repo.get_company(entitlement.company_id):
             raise ConfigurationError(f"unknown company: {entitlement.company_id}")
         old = self.repo.get_company_entitlement(entitlement.company_id)
@@ -188,6 +204,7 @@ class PlatformAdminService:
 
     def create_entitlement_from_package(self, *, company_id: str, package_id: str, entitlement_id: str,
                                         effective_from: datetime, actor: str, reason: str) -> CompanyEntitlement:
+        self._who_and_why(actor, reason)
         package = self.repo.get_package(package_id)
         if package is None or not package.active:
             raise ConfigurationError(f"active package not found: {package_id}")
@@ -198,6 +215,7 @@ class PlatformAdminService:
         return self.set_permanent_entitlement(entitlement, actor=actor, reason=reason)
 
     def grant_temporary_entitlement(self, entitlement: TemporaryEntitlement, *, actor: str, reason: str) -> TemporaryEntitlement:
+        self._who_and_why(actor, reason)
         if entitlement.effective_to <= entitlement.effective_from:
             raise ConfigurationError("temporary entitlement must expire after it starts")
         if not self.repo.get_company(entitlement.company_id):
@@ -248,6 +266,7 @@ class PlatformAdminService:
         written in a mail - and the account has to stop being guarded by it the moment the customer
         is in. The customer's own change calls this with false.
         """
+        self._who_and_why(actor, reason)
         user = self.repo.find_user_by_email(email)
         if user is None:
             raise ConfigurationError(f"no application user is configured for {normalise_email(email)}")
@@ -321,6 +340,7 @@ class PlatformAdminService:
         return self.resolve_user_access(credential.email, at=at)
 
     def create_user(self, user: UserAccess, *, actor: str, reason: str) -> UserAccess:
+        self._who_and_why(actor, reason)
         parent = self.effective_company_scope(user.company_id)
         if not scope_contains(parent, user.scope):
             raise EntitlementViolation("user scope exceeds the company's effective entitlement")
@@ -334,6 +354,7 @@ class PlatformAdminService:
         return user
 
     def set_approved_domains(self, company_id: str, domains: set[str], *, actor: str, reason: str) -> set[str]:
+        self._who_and_why(actor, reason)
         if not self.repo.get_company(company_id):
             raise ConfigurationError(f"unknown company: {company_id}")
         normalized = {d.strip().lower() for d in domains if d.strip()}
@@ -347,6 +368,7 @@ class PlatformAdminService:
 
     def add_recipient(self, recipient: Recipient, *, actor: str, reason: str,
                       allow_external: bool = False, exception_reason: str | None = None) -> Recipient:
+        self._who_and_why(actor, reason)
         if "@" not in recipient.email:
             raise RecipientDomainViolation("recipient email is invalid")
         domain = recipient.email.rsplit("@", 1)[1].strip().lower()
@@ -371,6 +393,7 @@ class PlatformAdminService:
         return saved
 
     def save_delivery_profile(self, profile: DeliveryProfile, *, actor: str, reason: str) -> DeliveryProfile:
+        self._who_and_why(actor, reason)
         parent = self.effective_company_scope(profile.company_id)
         if not scope_contains(parent, profile.scope):
             raise EntitlementViolation("delivery profile scope exceeds the company's effective entitlement")
@@ -419,6 +442,7 @@ class PlatformAdminService:
         switching something off grants nothing. A delivery profile whose company entitlement has
         since narrowed could otherwise never be switched off, which is when you would want to.
         """
+        self._who_and_why(actor, reason)
         kind = self._KINDS.get(type(record).__name__)
         if kind is None:
             raise ConfigurationError(f"no rule for switching off a {type(record).__name__}")

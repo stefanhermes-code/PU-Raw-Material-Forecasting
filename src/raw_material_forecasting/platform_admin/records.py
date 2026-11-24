@@ -23,12 +23,29 @@ Two things this deliberately does not do:
 
 The list of records stays below the tabs rather than inside a Home tab, because you read it while
 you are editing.
+
+WHAT "DOES NOT WORK" TURNED OUT TO BE (v1.2.123, 24 November 2026)
+-------------------------------------------------------------------
+Stefan, on Customers, Subscriptions and Users: *"it should show edit/delete but this does not
+work, cannot edit anything."* Driven in a browser for the first time that day - until then these
+pages were only ever read as source - and four things were wrong, all of them here and so on all
+seven pages:
+
+  * The Edit / Delete tab opened on a chooser reading "Create a new one" and nothing else. No
+    field, no button, on the tab that is for editing. Now it opens on the first record.
+  * A save that worked said "Saved" above a list still showing the old record, because the list
+    had been read before the save. Now the page is drawn again and says what happened at the top.
+  * A save without a change reason answered with an error and had already written the record,
+    with no entry in the change history. The service now asks for who and why before it writes.
+  * Delete was called "Switch off". It still does what Stefan chose on 31 October - the row is
+    kept - and it is called Delete, which is the word on the tab.
 """
 from __future__ import annotations
 
 import io
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import re
 from typing import Any, Callable, Iterable, Sequence
 
 import pandas as pd
@@ -145,20 +162,65 @@ class RecordKind:
 # ----------------------------------------------------------------------------- shared small parts
 def reason_fields(prefix: str) -> tuple[str, str]:
     actor = st.text_input("Changed by", value="HTC Platform Admin", key=f"{prefix}_actor")
-    reason = st.text_input("Change reason", key=f"{prefix}_reason")
+    reason = st.text_input("Change reason (required)", key=f"{prefix}_reason",
+                           placeholder="Why this change is being made - kept in the change history")
     return actor, reason
 
 
-def safe_action(action):
+# What the last action did, said once at the top of the page it is drawn on next.
+FLASH_KEY = "platform_admin_flash"
+# Set by a write, read once by the chooser on the page drawn after it: see `pick_to_edit`.
+REDRAWN_KEY = "platform_admin_redrawn_after_a_write"
+# How many writes this session has made. Part of every form's keys: see `form_mark`.
+WRITES_KEY = "platform_admin_writes"
+
+
+def form_mark(record_id: str | None) -> str:
+    """What a form's keys carry: the record it is for, and how many writes came before it.
+
+    A widget keeps its value under its key, in the session AND in the browser. A form whose keys
+    were only the record's id was therefore the same widgets after a write as before it, and went
+    on showing what had been typed or what had been stored, whichever the browser had last: a
+    customer deleted a moment earlier still read ACTIVE above the Delete button, and Save would
+    have written that back (seen in the browser, 24 November 2026; clearing the session's copy did
+    not help, because the browser keeps its own).
+
+    So a write changes the keys. Every form on the page is then new widgets, drawn from the store,
+    and the Create form is empty again for the same reason.
+    """
+    drawn = int(st.session_state.get(WRITES_KEY, 0))
+    base = record_id or "new"
+    return base if not drawn else f"{base}.{drawn}"
+
+
+def show_flash() -> None:
+    message = st.session_state.pop(FLASH_KEY, None)
+    if message:
+        st.success(message)
+        # And where the reader is. A user's form is two screens long and its Save button is at the
+        # bottom, so a message only at the top of the page was a message nobody saw.
+        st.toast(message)
+
+
+def safe_action(action, *, done: str = "Saved."):
+    """Run a write. Refused: say why, and leave the form as typed. Done: draw the page again.
+
+    Drawing it again is the point. Every one of these pages reads its records at the top and draws
+    its list at the bottom, so a write made in between left the old record on the screen under the
+    word "Saved" - which reads as a save that did not take. The message is carried over the redraw
+    and shown at the top (`show_flash`), and every form comes back as new widgets (`form_mark`).
+    """
     from .service import PlatformAdminError
 
     try:
-        result = action()
-        st.success("Saved")
-        return result
+        action()
     except (PlatformAdminError, ValueError) as exc:
         st.error(str(exc))
         return None
+    st.session_state[FLASH_KEY] = done
+    st.session_state[REDRAWN_KEY] = True
+    st.session_state[WRITES_KEY] = int(st.session_state.get(WRITES_KEY, 0)) + 1     # see `form_mark`
+    st.rerun()
 
 
 def pick_to_edit(label: str, items: Sequence[Any], *, id_of, name_of, key: str):
@@ -176,9 +238,21 @@ def pick_to_edit(label: str, items: Sequence[Any], *, id_of, name_of, key: str):
     if not items:
         return None
     by_id = {id_of(item): item for item in items}
-    chosen = st.selectbox(label, ["", *by_id],
-                          format_func=lambda i: "Create a new one" if not i else name_of(by_id[i]),
-                          key=key)
+    # No blank choice. This is the Edit tab: it opened on "Create a new one" and an empty panel,
+    # and a tab for editing with nothing on it to edit is what "does not work" looks like. It
+    # opens on the first record now, and Create has its own tab.
+    # After a save the chooser is told its record again, by id. The browser holds the chosen line
+    # as its words, and a rename changes the words: left alone it went on showing the old name
+    # above the form for the new one, and for any record but the first the choice fell back to
+    # the top of the list - so the next save would have been made on a different record.
+    held = st.session_state.get(f"{key}_record")
+    if st.session_state.pop(REDRAWN_KEY, False) and held in by_id:
+        st.session_state[key] = held
+    elif st.session_state.get(key) not in by_id:
+        st.session_state.pop(key, None)            # the one chosen last time is no longer listed
+    chosen = st.selectbox(f"{label} to edit or delete", list(by_id),
+                          format_func=lambda i: name_of(by_id[i]), key=key)
+    st.session_state[f"{key}_record"] = chosen
     return by_id.get(chosen)
 
 
@@ -187,16 +261,22 @@ def _switch_off(kind: RecordKind, record: Any, *, deactivate, key: str) -> None:
     """Delete, as Stefan defined it: the record stops applying and the row stays."""
     now = datetime.now(timezone.utc)
     st.divider()
+    st.markdown(f"**Delete this {kind.noun}**")
     if not is_on(record, at=now):
-        st.caption(f"This {kind.noun} is already switched off. Edit it above to put it back.")
+        st.caption(f"This {kind.noun} is already deleted: it is switched off and no longer applies. "
+                   f"Edit it above to bring it back.")
         return
     st.caption(
-        f"Switching a {kind.noun} off keeps the row and everything that points at it. Nothing in "
-        f"Platform Admin is deleted, so the change history stays readable.")
-    with st.form(f"{key}_off_form"):
-        actor, reason = reason_fields(f"{key}_off")
-        if st.form_submit_button(f"Switch this {kind.noun} off", type="secondary"):
-            safe_action(lambda: deactivate(record, actor=actor, reason=reason))
+        f"A deleted {kind.noun} is switched off from now and no longer applies. The row is kept, "
+        f"with everything that points at it, so the change history stays readable - and editing "
+        f"it brings it back.")
+    mark = form_mark("off")
+    with st.form(f"{key}_{mark}_form"):
+        actor, reason = reason_fields(f"{key}_{mark}")
+        if st.form_submit_button(f"Delete this {kind.noun}", type="secondary"):
+            safe_action(lambda: deactivate(record, actor=actor, reason=reason),
+                        done=f"Deleted: {kind.name_of(record)} is switched off and kept in the "
+                             f"change history.")
 
 
 def _sheet_bytes(frame: pd.DataFrame) -> bytes:
@@ -301,18 +381,22 @@ def record_tabs(kind: RecordKind, records: Sequence[Any], draw_form, *, deactiva
     does not use it. Here it costs nothing: the records were read once before these tabs, and the
     three panels only draw widgets over what is already in hand.
     """
-    create_tab, edit_tab, sheet_tab = st.tabs(TAB_LABELS)
+    # Keyed, and told to the server. An unkeyed tab bar is remembered by the browser alone and
+    # only for as long as nothing above it on the page changes - so the message a save puts at the
+    # top of the page threw the reader from Edit / Delete back to Create, on the record they had
+    # just saved (seen in the browser, 24 November 2026; a test that only reads widgets cannot).
+    create_tab, edit_tab, sheet_tab = st.tabs(TAB_LABELS, key=f"{key}_tabs", on_change="rerun")
     with create_tab:
         draw_form(None)
     with edit_tab:
         if not records:
             st.info(f"No {kind.noun} is held yet. Create one first.")
         else:
-            chosen = pick_to_edit(kind.noun.title(), records, id_of=kind.id_of,
-                                  name_of=kind.name_of, key=f"{key}_pick")
-            if chosen is None:
-                st.caption(f"Choose a {kind.noun} above to edit or switch off.")
-            else:
+            now = datetime.now(timezone.utc)
+            chosen = pick_to_edit(
+                kind.noun.title(), records, id_of=kind.id_of, key=f"{key}_pick",
+                name_of=lambda r: kind.name_of(r) + ("" if is_on(r, at=now) else "  -  deleted"))
+            if chosen is not None:
                 draw_form(chosen)
                 _switch_off(kind, chosen, deactivate=deactivate, key=key)
     with sheet_tab:
