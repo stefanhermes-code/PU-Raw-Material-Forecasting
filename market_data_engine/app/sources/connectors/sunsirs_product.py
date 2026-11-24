@@ -26,12 +26,17 @@ class SunSirsProductConnector:
 
     def __init__(self, *, source_id: str, source_url: str, product: str,
                  product_token: str | None = None, grade: str | None = None,
-                 geography: str = "China", basis: str = "EXW"):
+                 geography: str = "China", basis: str = "EXW", sector: str = "Chemical"):
         self.source_id = source_id
         self.source_url = source_url
         self.product = product
         # What the page calls it, which is not always what we call it.
         self.product_token = product_token or product
+        # The sector SunSirs files the product under, which is the second cell of every row in its
+        # daily table. Every feedstock read until v1.2.117 was "Chemical". PTA is "Textile" -
+        # it is the polyester chain's raw material - and read as a chemical its page yields
+        # nothing at all.
+        self.sector = sector
         self.grade = grade
         self.geography = geography
         self.basis = basis
@@ -77,7 +82,7 @@ class SunSirsProductConnector:
         text = re.sub(r"\s+", " ", text).strip()
 
         pattern = re.compile(
-            rf"{re.escape(self.product_token)}\s+Chemical\s+([0-9,]+(?:\.[0-9]+)?)\s+(20\d{{2}}-\d{{2}}-\d{{2}})\b",
+            rf"{re.escape(self.product_token)}\s+{re.escape(self.sector)}\s+([0-9,]+(?:\.[0-9]+)?)\s+(20\d{{2}}-\d{{2}}-\d{{2}})\b",
             re.I,
         )
         records: list[ExtractedRecord] = []

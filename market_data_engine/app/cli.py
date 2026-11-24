@@ -232,6 +232,41 @@ def connector_for(source_id: str):
             source_id=source_id, source_url="https://www.sunsirs.com/uk/prodetail-1332.html",
             product="Diethylene glycol", geography="China", basis="EXW",
         )
+    # The polyester feedstocks that had no Chinese price (v1.2.117). Ethylene glycol and maleic
+    # anhydride are read from SCI99 alone: SunSirs sat 6% and 19% away from it on the same days,
+    # and a consolidated value of two publishers that far apart is a price neither printed. DMT
+    # is not here because neither publisher prices it.
+    if source_id == "sci99_ethylene_glycol":
+        return Sci99ProductConnector(
+            source_id=source_id, old_id="367",
+            product="Ethylene glycol", grade=None, geography="China", basis="EXW",
+        )
+    if source_id == "sci99_maleic_anhydride":
+        return Sci99ProductConnector(
+            source_id=source_id, old_id="114763214",
+            product="Maleic anhydride", grade=None, geography="China", basis="EXW",
+        )
+    if source_id == "sci99_phthalic_anhydride":
+        return Sci99ProductConnector(
+            source_id=source_id, old_id="94703214",
+            product="Phthalic anhydride", grade=None, geography="China", basis="EXW",
+        )
+    if source_id == "sunsirs_phthalic_anhydride":
+        return SunSirsProductConnector(
+            source_id=source_id, source_url="https://www.sunsirs.com/uk/prodetail-541.html",
+            product="Phthalic anhydride", product_token="PA", geography="China", basis="EXW",
+        )
+    if source_id == "sci99_pta":
+        return Sci99ProductConnector(
+            source_id=source_id, old_id="368",
+            product="Terephthalic acid", grade=None, geography="China", basis="EXW",
+        )
+    if source_id == "sunsirs_pta":
+        return SunSirsProductConnector(
+            source_id=source_id, source_url="https://www.sunsirs.com/uk/prodetail-356.html",
+            product="Terephthalic acid", product_token="PTA", geography="China", basis="EXW",
+            sector="Textile",
+        )
     if source_id == "jlc_pu_channel":
         return JlcChannelConnector()
     if source_id == "sci99_polyol":
