@@ -350,6 +350,20 @@ class ProductionForecastService:
     def _existing(self, session, key: str) -> GovernedForecastRunModel | None:
         return session.scalar(select(GovernedForecastRunModel).where(GovernedForecastRunModel.run_key == key))
 
+    def _held(self, session, key: str, version: str) -> GovernedForecastRunModel | None:
+        """The successful run already stored under this key by the method AS IT NOW IS, if there is one.
+
+        Among every attempt under the key, not only the first: a run by an earlier version of the
+        method holds the first place and the corrected one is filed beside it (v1.2.120).
+        """
+        attempt, candidate = 1, key
+        while (run := self._existing(session, candidate)) is not None:
+            if run.status == SUCCEEDED and (run.method_version or "") == (version or ""):
+                return run
+            attempt += 1
+            candidate = f"{key}#attempt {attempt}"
+        return None
+
     def _record_success(self, identity, identity_key, horizon_weeks, prepared: Prepared, chosen: InForce,
                         output: ForecastOutput, point, inputs) -> dict[str, Any]:
         as_of = prepared.priced_to
@@ -362,8 +376,8 @@ class ProductionForecastService:
         key = run_key(identity_key, horizon_weeks, as_of, chosen.method.method_key, chosen.source,
                       prepared.issue_date, lead)
         with self.session_factory() as session:
-            held = self._existing(session, key)
-            if held is not None and held.status == SUCCEEDED:
+            held = self._held(session, key, output.method_version)
+            if held is not None:
                 return _run_dict(held) | {"written": False, "already_present": True}
             key = self._free_key(session, key)
             led = f"|lead {int(lead)}w" if lead is not None and int(lead) != int(horizon_weeks) else ""
@@ -402,6 +416,18 @@ class ProductionForecastService:
                     vkey = f"{vkey}|for {point.period.isoformat()}"
                     vintage = session.scalar(
                         select(ForecastVintageModel).where(ForecastVintageModel.vintage_key == vkey))
+            # A method that changed is a different claim too (v1.2.120).
+            #
+            # 24 November 2026: "Last month's move, continued" stopped forecasting reversals and
+            # became version 1.1. PO India CIF stood at +29%, +34% and +39% on one, and its data
+            # date is 1 August: every key above was unchanged, so the corrected method would have
+            # been handed the vintage version 1.0 wrote, tonight and every night until customs
+            # published a new month. The version is what says a method is no longer the one that
+            # made the stored claim, so it is what the new claim is filed under.
+            if vintage is not None and (vintage.model_version or "") != (output.method_version or ""):
+                vkey = f"{vkey}|v{output.method_version}"
+                vintage = session.scalar(
+                    select(ForecastVintageModel).where(ForecastVintageModel.vintage_key == vkey))
             if vintage is None:
                 vintage = ForecastVintageModel(
                     vintage_key=vkey, identity_key=identity_key, model_key=chosen.method.method_key,
