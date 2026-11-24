@@ -29,7 +29,8 @@ from typing import Any, Iterable, Sequence
 from app.forecasting.adapter import DAILY, WEEKLY, Series
 from raw_material_forecasting.units import MT
 from app.forecasting.service import (
-    _as_date, _period, best_frequency, bucket, ending_on_the_newest_price)
+    _as_date, _period, best_frequency, bucket, ending_on_the_newest_price,
+    watched_to_the_newest_price)
 
 
 @dataclass(frozen=True)
@@ -181,7 +182,10 @@ def build_history(rows: Sequence[dict[str, Any]], cutoff: date, *, identity_key:
     last_bucket = max(filled) if filled else None
     offset = (newest - last_bucket).days if newest and last_bucket and newest > last_bucket else 0
     series = Series(identity_key, chemical, frequency, tuple(filled.items()), unit=unit or MT,
-                    offset_days=offset)
+                    offset_days=offset,
+                    # Judged on the rows this cutoff could see, so a method is examined at each
+                    # past date on the series it would have been handed that day.
+                    ends_on_a_watched_price=watched_to_the_newest_price(visible, frequency, cutoff))
     expected = expected_periods(min(filled), max(filled), frequency) if filled else []
     current_period = _period(cutoff, frequency)
     # The period the cutoff stands in. Blank means the newest print the reader has is older than

@@ -16,6 +16,33 @@ Parameters are fitted by minimising one-step squared error on the training windo
 coarse grid. A grid rather than an optimiser because there is no scipy in this runtime, and because
 on thirty observations the likelihood surface is flat enough that the third decimal of alpha is
 noise pretending to be a decision.
+
+WHERE THE MARKET IS WATCHED, THE LEVEL IS THE NEWEST PRICE (v1.2.121, 24 November 2026)
+-----------------------------------------------------------------------------------------
+Smoothing believes a share of each new figure, and that is right for a figure with noise in it.
+Since v1.2.116 the last point of a bucketed series is the newest print, and on a market printed
+several times a period (`Series.ends_on_a_watched_price`) that is not a noisy figure. It is the
+price. So there the level the forecast starts from is that price, and the smoothed level is
+reported beside it. The parameters are fitted exactly as before, and so is the band.
+
+**Only where the fit chose no trend.** Built for both forms first and measured before release
+(`scripts/latest_price_vs_month/watched.py`, 41 series printed weekly, 35,698 forecasts, mean miss
+at one, two and three months):
+
+                              carrying the price   as it was    from the newest price
+    no trend    (4,879)       5.40  8.83  11.14    5.56  8.82  11.13    5.40  8.83  11.14
+    with trend  (7,159)       4.82  8.27  10.59    5.20  8.91  11.54    5.21  8.96  11.61
+
+Without a trend the gain is at one month - 7.74 to 6.96 after a fall of 8% or more, 14.23 to 10.37
+where the method had stood 3% or more from the price - and at two and three months there is
+nothing in it either way. All three horizons take the price, so the cards do not step back up
+between the first month and the second for no reason a reader could be given.
+
+With a trend, moving the level changed nothing: what loses to carrying the price there is the
+trend itself, by a point at three months and by five and a half after a sharp move (20.48 against
+14.89). That is a different defect and it is not touched here.
+
+The market that prompted this is in `service.watched_to_the_newest_price`.
 """
 from __future__ import annotations
 
@@ -54,12 +81,14 @@ def _sse(values, alpha, beta=None, phi=None) -> float:
 
 class ExponentialSmoothing:
     SPEC = ModelSpec(
-        key="ets", family="ETS", version="1.0",
+        key="ets", family="ETS", version="1.1",
         licence="none (arithmetic)", licence_class=LicenceClass.COMMERCIAL,
         display_name="Recent prices, smoothed",
         explanation="Averages the recent months, with the newest counting for most and older ones "
                     "fading out. Where the price has been drifting one way it carries some of that "
-                    "drift forward, held back so it cannot run away by three months.",
+                    "drift forward, held back so it cannot run away by three months. On a market "
+                    "priced through the month, with no drift to carry, it starts from the newest "
+                    "price.",
         supports_quantiles=True, is_control=True,
         note="ETS(A,N,N) or ETS(A,Ad,N), chosen by in-sample fit. The benchmark a candidate has to "
              "clear to be worth its runtime.",
@@ -91,6 +120,10 @@ class ExponentialSmoothing:
 
         _score, alpha, beta, phi = best
         errors, level, trend = _smooth(values, alpha, beta, phi)
+        smoothed = level
+        from_the_price = series.ends_on_a_watched_price and beta is None
+        if from_the_price:
+            level = values[-1]
         points = []
         for weeks in request.horizons:
             steps, exact = steps_for(weeks, series.frequency, series.offset_days)
@@ -112,5 +145,7 @@ class ExponentialSmoothing:
         return ForecastResult(
             self.spec, request.as_of, tuple(points),
             {"form": "ETS(A,N,N)" if beta is None else "ETS(A,Ad,N)",
-             "alpha": alpha, "beta": beta, "phi": phi, "observations": len(values)},
+             "alpha": alpha, "beta": beta, "phi": phi, "observations": len(values),
+             "starts_from": "newest price" if from_the_price else "smoothed level",
+             "smoothed_level": round(smoothed, 2)},
         )

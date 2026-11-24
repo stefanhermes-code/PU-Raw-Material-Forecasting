@@ -257,6 +257,21 @@ def card_html(content: CardContent) -> str:
     )
 
 
+def move_html(move: float | None) -> str:
+    """The banner's direction: up, down, or - where the forecast IS the reference - neither.
+
+    A move that prints as 0.0% used to be drawn as a red rise, because zero is not below zero.
+    Since v1.2.121 a forecast can equal the market price it is read against, and "up 0.0%" beside
+    two identical figures is the page arguing with itself.
+    """
+    if move is None:
+        return ""
+    if round(abs(move), 1) == 0.0:
+        return '<div class="figure banner-move">&#9644; no change</div>'
+    return (f'<div class="figure banner-move {"up" if move >= 0 else "down"}">'
+            f'{"&#9650;" if move >= 0 else "&#9660;"} {abs(move):.1f}%</div>')
+
+
 def flat_note(points: list[dict], metadata: dict | None = None) -> str:
     """Why the same figure appears on all three cards, when it does.
 
@@ -274,6 +289,13 @@ def flat_note(points: list[dict], metadata: dict | None = None) -> str:
     form = str((metadata or {}).get("form") or "")
     if form and "Ad" in form:
         return ""
+    if (metadata or {}).get("starts_from") == "newest price":
+        # Since v1.2.121 the figure is also the market price printed above it, and a reader who
+        # sees today's price three times over is owed the reason more than anyone.
+        return ("The same figure at all three horizons, and it is the newest market price: this "
+                "market is priced through the month, so the forecast starts from that price, and "
+                "the model finds no trend in the history strong enough to carry forward from it. "
+                "What changes with distance is the range around it.")
     return ("The same figure at all three horizons: the model finds no trend in the history strong "
             "enough to carry forward, so it holds the level. What changes with distance is the "
             "range around it.")
@@ -715,9 +737,7 @@ def banner_html(content: BannerContent) -> str:
            if content.previous_value is not None else "")
         + f'<div class="figure"><div class="label">{esc(content.month)}</div>'
           f'<div class="value">{esc(content.forecast)}</div></div>'
-        + (f'<div class="figure banner-move {"up" if content.move >= 0 else "down"}">'
-           f'{"&#9650;" if content.move >= 0 else "&#9660;"} {abs(content.move):.1f}%</div>'
-           if content.move is not None else "")
+        + move_html(content.move)
         + "</div>"
         f'<div class="banner-bands">{body}</div>'
         + f'<div class="banner-trials">{esc(METHOD_NOTE)}</div>'

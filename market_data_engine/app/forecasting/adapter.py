@@ -92,6 +92,12 @@ class Series:
     # three months to be three months. Zero wherever the publisher prints on the 1st, which is 69
     # of the 84 markets in the store.
     offset_days: int = 0
+    # The last point is the newest price of a market printed several times a period, standing
+    # among the medians of the periods before it - `service.watched_to_the_newest_price`. A method
+    # that smooths may then treat it as the price it is rather than as one more noisy period
+    # figure (`models.ets`, v1.2.121, where it holds a level and no trend). False for a series cut to a past date by anything other
+    # than the two builders that know the prints.
+    ends_on_a_watched_price: bool = False
 
     def __post_init__(self) -> None:
         days = [day for day, _ in self.points]
@@ -112,9 +118,10 @@ class Series:
 
     def up_to(self, as_of: date) -> "Series":
         """The series as it stood on `as_of`. This is how a caller makes a request legal."""
-        return Series(self.key, self.chemical, self.frequency,
-                      tuple((day, value) for day, value in self.points if day <= as_of),
-                      self.unit, self.label, self.offset_days)
+        kept = tuple((day, value) for day, value in self.points if day <= as_of)
+        return Series(self.key, self.chemical, self.frequency, kept,
+                      self.unit, self.label, self.offset_days,
+                      self.ends_on_a_watched_price and len(kept) == len(self.points))
 
 
 @dataclass(frozen=True)

@@ -302,6 +302,54 @@ def _calibrated_points(model, series: Series, result, availability: dict[date, d
     return points, calibrations
 
 
+# A market is WATCHED to its newest price when it was printed on at least this many days in the
+# stretch before that price: five weeks for a monthly series (weekly or better), eight days for a
+# weekly one (daily). One figure a period is not watched, however long the record.
+WATCHED_PRINT_DAYS = 4
+WATCH_WINDOW_DAYS = {MONTHLY: 35, WEEKLY: 8}
+
+
+def watched_to_the_newest_price(rows: Iterable[dict[str, Any]], frequency: str,
+                                on_or_before: date | None = None) -> bool:
+    """Whether the series' last word is a price among several this period, not a lone period figure.
+
+    WHY A METHOD NEEDS TO KNOW
+    --------------------------
+    Since v1.2.116 a bucketed series ends on the newest print. A smoothing method does not know
+    that. It treats the last point like every point before it - a period figure with noise in it -
+    and believes a share of it. Polyether Polyol China EXW, 24 November 2026: the price had fallen
+    16% in three weeks on two publishers, the share was one half, fitted on a record that is one
+    print a month until 2023, and the forecast for each of the next three months was half way back
+    up: 9,805 from 9,381.
+
+    Measured (`scripts/latest_price_vs_month/pullback.py`, 41 series printed weekly, 2,857
+    market-months): carrying the newest price missed by 5.06, 8.48 and 10.80% at one, two and three
+    months, the smoothed level by 5.34, 8.85 and 11.37%. After a fall of 8% or more of which the
+    method took 3% or more back, 7.73% against 12.73% at one month - and the price was a further
+    1.4% lower a month on, not higher.
+
+    Stefan, 24 November 2026: *"Yes, build it."* What the method then does with the answer, and
+    the measurement that narrowed it to the form without a trend, is in `models.ets`.
+
+    WHAT COUNTS
+    -----------
+    Print DAYS, not prints: two publishers on one day are one day. And only a series bucketed
+    coarser than it is printed. On a daily series the last point is a day like every other, and
+    the method's share was fitted on days.
+    """
+    window = WATCH_WINDOW_DAYS.get(frequency)
+    if window is None:
+        return False
+    days = {day for row in rows
+            if (day := _as_date(row.get("observation_date"))) is not None
+            and row.get("native_price", row.get("price")) is not None
+            and (on_or_before is None or day <= on_or_before)}
+    if not days:
+        return False
+    newest = max(days)
+    return sum(1 for day in days if (newest - day).days < window) >= WATCHED_PRINT_DAYS
+
+
 def _latest_print(rows: Sequence[dict[str, Any]],
                   on_or_before: date | None = None) -> dict[str, Any] | None:
     """The newest single observation, with its date and how many publishers agreed that day.
@@ -382,7 +430,8 @@ def forecast_identity(rows: Sequence[dict[str, Any]], *, identity_key: str, chem
                     # alone because rewriting it would split every series in two; measured, no two
                     # identities differ only by unit, and migration 0057 moved them all to MT.
                     unit=_label_unit(identity_key, currency),
-                    offset_days=offset_days)
+                    offset_days=offset_days,
+                    ends_on_a_watched_price=watched_to_the_newest_price(rows, frequency, as_of))
     # The model runs from the last BUCKET; the claim is dated by the last PRINT.
     #
     # A monthly bucket is keyed to the first of its month, so `series.last_date` is 1 September even
