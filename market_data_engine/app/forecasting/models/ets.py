@@ -43,6 +43,38 @@ trend itself, by a point at three months and by five and a half after a sharp mo
 14.89). That is a different defect and it is not touched here.
 
 The market that prompted this is in `service.watched_to_the_newest_price`.
+
+HALF OF THE FIRST MONTH'S TREND, AND NOTHING AFTER (v1.2.122, 24 November 2026)
+---------------------------------------------------------------------------------
+That different defect, measured the same day and then built. Stefan: *"Yes, measure it"*, and on
+the result, *"Half, first month."*
+
+Three tests on the 41 series printed weekly (`scripts/latest_price_vs_month/trend.py`,
+`trend_weekly.py`, `trend_month_figures.py`), each fitting exactly as this module does - checked
+against 35,896 of the engine's own answers, none differing. Mean miss:
+
+                                           carrying the price    damped trend      this rule
+    monthly figures ending on a print      5.06  8.48  10.80     5.31  8.86  11.38   5.11  8.45  10.76
+    kept weekly, 4 / 8 / 12 weeks          4.79  8.05  10.38     4.85  8.56  11.20   4.67  7.99  10.38
+    one figure a month, 1 / 3 / 5 months   4.97 10.72  14.04     5.21 11.30  14.59   5.06 10.69  13.93
+    kept weekly, after a move of 8%+       8.81 12.66  15.09     9.61 16.34  20.56   8.61 12.95  15.69
+
+The damped trend was worse than carrying the price in about 30 of the 41 markets at the longest
+horizon, in both halves of the record. And the reason is in the last table of `trend_weekly.py`:
+it points the right way 69% of the time at four weeks and says 3.0% where the price then moved
+3.2%; at twelve weeks, 59%, 5.3% said and 2.1% moved. A move carries for about a month and then
+gives some back, and a damping of 0.80 to 0.98 a step goes on adding for three.
+
+So the drift carried is half of what the fit finds for the first four weeks, and every horizon
+past that gets the same. The three cards read one figure. It is not a better forecast than
+carrying the price - nothing tried was, a dozen alternatives on one sample - it is the damped
+trend's cost removed with the direction kept, and the direction is the part a buyer acts on.
+
+On a watched market the level is the newest price for this form too, now: with half a month's
+drift there is nothing left for the two to disagree about (5.11 against 5.14 at one month).
+
+Not measured: the daily markets. They had ten weeks of record on the day this was built, which is
+one autumn. The weekly test is the nearest thing to them, and it is not them.
 """
 from __future__ import annotations
 
@@ -52,6 +84,10 @@ from app.forecasting.adapter import (
     ForecastPoint, ForecastRequest, ForecastResult, LicenceClass, ModelSpec, period_after, steps_for,
 )
 from app.forecasting.models.naive import _empirical_quantiles
+
+# How much of the fitted trend is carried, and for how long: see the module's last section.
+TREND_SHARE = 0.5
+TREND_WEEKS = 4
 
 ALPHA_GRID = [round(0.05 * n, 2) for n in range(1, 20)]          # 0.05 .. 0.95
 BETA_GRID = [round(0.05 * n, 2) for n in range(1, 11)]           # 0.05 .. 0.50
@@ -81,14 +117,13 @@ def _sse(values, alpha, beta=None, phi=None) -> float:
 
 class ExponentialSmoothing:
     SPEC = ModelSpec(
-        key="ets", family="ETS", version="1.1",
+        key="ets", family="ETS", version="1.2",
         licence="none (arithmetic)", licence_class=LicenceClass.COMMERCIAL,
         display_name="Recent prices, smoothed",
         explanation="Averages the recent months, with the newest counting for most and older ones "
-                    "fading out. Where the price has been drifting one way it carries some of that "
-                    "drift forward, held back so it cannot run away by three months. On a market "
-                    "priced through the month, with no drift to carry, it starts from the newest "
-                    "price.",
+                    "fading out. Where the price has been drifting one way it carries half of the "
+                    "first month's drift forward and adds nothing after that. On a market priced "
+                    "through the month it starts from the newest price.",
         supports_quantiles=True, is_control=True,
         note="ETS(A,N,N) or ETS(A,Ad,N), chosen by in-sample fit. The benchmark a candidate has to "
              "clear to be worth its runtime.",
@@ -121,9 +156,11 @@ class ExponentialSmoothing:
         _score, alpha, beta, phi = best
         errors, level, trend = _smooth(values, alpha, beta, phi)
         smoothed = level
-        from_the_price = series.ends_on_a_watched_price and beta is None
+        from_the_price = series.ends_on_a_watched_price
         if from_the_price:
             level = values[-1]
+        # A month of this series' own steps: one for a monthly series, four for a weekly one.
+        month, _ = steps_for(TREND_WEEKS, series.frequency)
         points = []
         for weeks in request.horizons:
             steps, exact = steps_for(weeks, series.frequency, series.offset_days)
@@ -131,8 +168,8 @@ class ExponentialSmoothing:
             if beta is None:
                 centre = level
             else:
-                damped = sum(phi ** step for step in range(1, steps + 1))
-                centre = level + damped * trend
+                carried = sum(phi ** step for step in range(1, min(steps, month) + 1))
+                centre = level + TREND_SHARE * carried * trend
             # A random walk's uncertainty grows with the square root of the horizon. Using the
             # one-step errors and widening them says so without claiming a distribution.
             points.append(ForecastPoint(
@@ -147,5 +184,7 @@ class ExponentialSmoothing:
             {"form": "ETS(A,N,N)" if beta is None else "ETS(A,Ad,N)",
              "alpha": alpha, "beta": beta, "phi": phi, "observations": len(values),
              "starts_from": "newest price" if from_the_price else "smoothed level",
-             "smoothed_level": round(smoothed, 2)},
+             "smoothed_level": round(smoothed, 2),
+             **({} if beta is None else {"trend_per_step": round(trend, 4),
+                                         "trend_carried": "half of the first month"})},
         )

@@ -288,7 +288,16 @@ def flat_note(points: list[dict], metadata: dict | None = None) -> str:
         return ""
     form = str((metadata or {}).get("form") or "")
     if form and "Ad" in form:
-        return ""
+        if not (metadata or {}).get("trend_carried"):
+            return ""
+        # Since v1.2.122 a trend moves all three cards by the same amount, so the question "why
+        # is it the same figure" comes up for this form too, and the answer is a different one.
+        start = ("the newest market price" if (metadata or {}).get("starts_from") == "newest price"
+                 else "the recent level")
+        return (f"The same figure at all three horizons: the price has been drifting, and the "
+                f"forecast is {start} with half of one month's drift added. Measured on past "
+                f"prices, a drift carries for about a month and then gives some back, so nothing "
+                f"more is added further out. What changes with distance is the range around it.")
     if (metadata or {}).get("starts_from") == "newest price":
         # Since v1.2.121 the figure is also the market price printed above it, and a reader who
         # sees today's price three times over is owed the reason more than anyone.
