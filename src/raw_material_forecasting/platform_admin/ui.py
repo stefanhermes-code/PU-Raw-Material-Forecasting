@@ -29,7 +29,7 @@ from raw_material_forecasting.platform_admin.models import (
 from raw_material_forecasting.platform_admin.records import (
     RecordKind,
     cell_list,
-    pick_to_edit,
+    clicked_record,
     read_date,
     read_flag,
     read_list,
@@ -304,7 +304,6 @@ def _scope_editor(prefix: str, default: EntitlementScope | None = None) -> Entit
 # belong to. Named here as well so the seven pages below read as they always did.
 _reason_fields = reason_fields
 _safe_action = safe_action
-_pick_to_edit = pick_to_edit
 
 
 def _company_map(service: PlatformAdminService) -> dict[str, Company]:
@@ -494,10 +493,8 @@ def _render_companies(service: PlatformAdminService) -> None:
                     actor=actor, reason=reason,
                 ))
 
-    shown = record_tabs(_company_kind(service), companies, form,
-                        deactivate=service.deactivate, key="company")
-    if shown:
-        st.dataframe(pd.DataFrame([c.__dict__ for c in shown]), width="stretch", hide_index=True)
+    record_tabs(_company_kind(service), companies, form, deactivate=service.deactivate,
+                key="company", listed=lambda c: dict(c.__dict__))
 
 
 def _package_kind(service: PlatformAdminService) -> RecordKind:
@@ -544,12 +541,9 @@ def _render_packages(service: PlatformAdminService) -> None:
                                       name.strip(), scope, active), actor=actor, reason=reason
                 ))
 
-    shown = record_tabs(_package_kind(service), packages, form,
-                        deactivate=service.deactivate, key="package")
-    if shown:
-        st.dataframe(pd.DataFrame([
-            {"Package ID": p.package_id, "Name": p.name, "Active": p.active, **scope_to_dict(p.scope)} for p in shown
-        ]), width="stretch", hide_index=True)
+    record_tabs(_package_kind(service), packages, form, deactivate=service.deactivate, key="package",
+                listed=lambda p: {"Package ID": p.package_id, "Name": p.name, "Active": p.active,
+                                  **scope_to_dict(p.scope)})
 
 
 def _permanent_kind(service: PlatformAdminService, company_id: str) -> RecordKind:
@@ -676,17 +670,13 @@ def _render_temporary(service: PlatformAdminService) -> None:
                     ), actor=actor, reason=audit_reason,
                 ))
 
-    shown = record_tabs(_temporary_kind(service, company_id), grants, form,
-                        deactivate=service.deactivate, key=f"temporary_{company_id}")
-    if shown:
-        now = datetime.now(timezone.utc)
-        st.dataframe(pd.DataFrame([
-            {
-                "ID": g.entitlement_id, "Type": g.reason_type, "Reason": g.reason,
-                "From": g.effective_from, "To": g.effective_to, "Active now": g.is_active(now),
-                "Scope": scope_to_dict(g.scope),
-            } for g in shown
-        ]), width="stretch", hide_index=True)
+    now = datetime.now(timezone.utc)
+    record_tabs(_temporary_kind(service, company_id), grants, form, deactivate=service.deactivate,
+                key=f"temporary_{company_id}",
+                listed=lambda g: {
+                    "ID": g.entitlement_id, "Type": g.reason_type, "Reason": g.reason,
+                    "From": g.effective_from, "To": g.effective_to, "Active now": g.is_active(now),
+                    "Scope": scope_to_dict(g.scope)})
 
 
 def _user_kind(service: PlatformAdminService, company_id: str) -> RecordKind:
@@ -735,15 +725,15 @@ def _render_users(service: PlatformAdminService) -> None:
                                email.strip(), role, scope, active), actor=actor, reason=reason
                 ))
 
-    shown = record_tabs(_user_kind(service, company_id), users, form,
-                        deactivate=service.deactivate, key=f"user_{company_id}")
-    if shown:
-        st.dataframe(pd.DataFrame([
-            {"User ID": u.user_id, "Email": u.email, "Role": u.role, "Active": u.active,
-             "Password": _password_state(service, u.email), "Scope": scope_to_dict(u.scope)}
-            for u in shown
-        ]), width="stretch", hide_index=True)
-        _render_user_passwords(service, shown)
+    record_tabs(_user_kind(service, company_id), users, form, deactivate=service.deactivate,
+                key=f"user_{company_id}",
+                listed=lambda u: {
+                    "User ID": u.user_id, "Email": u.email, "Role": u.role, "Active": u.active,
+                    "Password": _password_state(service, u.email), "Scope": scope_to_dict(u.scope)},
+                # The password belongs to the user whose row was clicked. It had a dropdown of its
+                # own under the list: a second chooser, which could be on a different user from
+                # the form above it.
+                after=lambda u: _render_user_password(service, u))
 
 
 def _password_state(service: PlatformAdminService, email: str) -> str:
@@ -770,20 +760,17 @@ def _suggested_password() -> str:
     return "-".join(picked) + "-" + str(secrets.randbelow(90) + 10) + "!"
 
 
-def _render_user_passwords(service: PlatformAdminService, users) -> None:
+def _render_user_password(service: PlatformAdminService, user: UserAccess) -> None:
     """Handing a customer their first password, and resetting one they have lost.
 
     Stefan sets it here and sends it on; the application makes them replace it before it opens
     (see `_render_password_change` in app.py). HTC never holds a customer's own password: what is
     stored is a PBKDF2 digest, and nothing on this screen can read one back.
     """
-    openable = [u for u in users if u.active]
-    if not openable:
+    if not user.active:          # a deleted user cannot sign in, so there is nothing to hand over
         return
-    with st.expander("Sign-in passwords"):
-        by_label = {f"{u.email} ({u.role})": u for u in openable}
-        label = st.selectbox("User", sorted(by_label), key="user_password_pick")
-        user = by_label[label]
+    mark = form_mark(user.user_id)
+    with st.expander("Sign-in password"):
         st.caption(f"Sign-in for {user.email}: {_password_state(service, user.email)}")
 
         suggestion_key = f"user_password_suggestion_{user.user_id}"
@@ -795,15 +782,15 @@ def _render_user_passwords(service: PlatformAdminService, users) -> None:
             st.caption("Copy this into the form below and send it to the user. They replace it "
                        "the first time they sign in.")
 
-        with st.form(f"user_password_form_{user.user_id}"):
+        with st.form(f"user_password_form_{mark}"):
             password = st.text_input(
                 "Password to hand over", type="password",
                 help=f"At least {MINIMUM_PASSWORD_LENGTH} characters, and three of: small "
                      "letter, capital, digit, punctuation.",
-                key=f"user_password_{user.user_id}")
+                key=f"user_password_{mark}")
             confirm = st.text_input("Confirm", type="password",
-                                    key=f"user_password_confirm_{user.user_id}")
-            actor, reason = _reason_fields(f"user_password_{user.user_id}")
+                                    key=f"user_password_confirm_{mark}")
+            actor, reason = _reason_fields(f"user_password_{mark}")
             if st.form_submit_button("Set this password", type="primary"):
                 if password != confirm:
                     st.error("The two passwords are not the same.")
@@ -877,10 +864,8 @@ def _render_recipients(service: PlatformAdminService) -> None:
                     exception_reason=exception_reason if allow_external else None,
                 ))
 
-    shown = record_tabs(_recipient_kind(service, company_id), recipients, form,
-                        deactivate=service.deactivate, key=f"recipient_{company_id}")
-    if shown:
-        st.dataframe(pd.DataFrame([r.__dict__ for r in shown]), width="stretch", hide_index=True)
+    record_tabs(_recipient_kind(service, company_id), recipients, form, deactivate=service.deactivate,
+                key=f"recipient_{company_id}", listed=lambda r: dict(r.__dict__))
 
 
 def _profile_kind(service: PlatformAdminService, company_id: str) -> RecordKind:
@@ -949,16 +934,12 @@ def _render_delivery_profiles(service: PlatformAdminService) -> None:
                     ), actor=actor, reason=reason,
                 ))
 
-    shown = record_tabs(_profile_kind(service, company_id), profiles, form,
-                        deactivate=service.deactivate, key=f"profile_{company_id}")
-    if shown:
-        st.dataframe(pd.DataFrame([
-            {
-                "Profile": p.name, "Frequency": p.frequency, "Formats": sorted(p.formats),
-                "Channels": sorted(p.channels), "Recipients": sorted(p.recipient_ids),
-                "Active": p.active, "Scope": scope_to_dict(p.scope),
-            } for p in shown
-        ]), width="stretch", hide_index=True)
+    record_tabs(_profile_kind(service, company_id), profiles, form, deactivate=service.deactivate,
+                key=f"profile_{company_id}",
+                listed=lambda p: {
+                    "Profile": p.name, "Frequency": p.frequency, "Formats": sorted(p.formats),
+                    "Channels": sorted(p.channels), "Recipients": sorted(p.recipient_ids),
+                    "Active": p.active, "Scope": scope_to_dict(p.scope)})
 
 
 
@@ -993,18 +974,32 @@ def _render_schedule_configuration(service: PlatformAdminService) -> None:
         st.info("Create a Delivery Profile before configuring a schedule.")
         return
 
-    profile_ids = [profile.profile_id for profile in profiles]
-    profile_id = st.selectbox(
-        "Delivery Profile",
-        profile_ids,
-        key="schedule_profile",
-        format_func=lambda pid: next(
-            f"{profile.name} ({profile.frequency})" for profile in profiles if profile.profile_id == pid
-        ),
-    )
-    profile = next(profile for profile in profiles if profile.profile_id == profile_id)
     scheduler = _build_delivery_scheduler(service)
-    existing = scheduler.schedules.get_schedule(profile_id)
+    held = {profile.profile_id: scheduler.schedules.get_schedule(profile.profile_id)
+            for profile in profiles}
+
+    def listed(profile: DeliveryProfile) -> dict[str, object]:
+        schedule = held[profile.profile_id]
+        return {
+            "Delivery profile": profile.name, "Frequency": profile.frequency,
+            "First delivery": schedule.first_delivery_date if schedule else "Not scheduled",
+            "Time": (f"{schedule.delivery_time:%H:%M} {schedule.timezone_name}" if schedule else ""),
+            "Enabled": bool(schedule and schedule.enabled),
+        }
+
+    # The standard chooser (`records.clicked_record`): the profiles in a table, and the schedule
+    # of the one clicked opens. It was a dropdown above a form that was always open.
+    profile_id = clicked_record([listed(profile) for profile in profiles],
+                                [profile.profile_id for profile in profiles],
+                                key=f"schedule_{company_id}")
+    if profile_id is None:
+        return
+    profile = next(profile for profile in profiles if profile.profile_id == profile_id)
+    existing = held[profile_id]
+    # The widgets carry the profile, and the writes made. With one set of keys for every profile
+    # the form went on holding the last profile's date and time when another was chosen.
+    mark = form_mark(profile_id)
+    st.markdown(f"#### {profile.name}")
 
     timezone_options = sorted(available_timezones())
     default_timezone = existing.timezone_name if existing else "Asia/Bangkok"
@@ -1012,31 +1007,31 @@ def _render_schedule_configuration(service: PlatformAdminService) -> None:
         timezone_options = [default_timezone] + timezone_options
     timezone_index = timezone_options.index(default_timezone)
 
-    with st.form("delivery_schedule_form"):
+    with st.form(f"delivery_schedule_form_{mark}"):
         st.caption(f"Frequency: {profile.frequency}")
         first_delivery_date = st.date_input(
             "First delivery date",
             value=existing.first_delivery_date if existing else date.today(),
-            key="schedule_first_delivery_date",
+            key=f"schedule_first_delivery_date_{mark}",
         )
         delivery_time = st.time_input(
             "Delivery time",
             value=existing.delivery_time if existing else time(8, 0),
-            key="schedule_delivery_time",
+            key=f"schedule_delivery_time_{mark}",
         )
         timezone_name = st.selectbox(
             "Timezone",
             timezone_options,
             index=timezone_index,
-            key="schedule_timezone",
+            key=f"schedule_timezone_{mark}",
             help="IANA timezone; delivery time is interpreted in this timezone.",
         )
         enabled = st.checkbox(
             "Schedule enabled",
             value=existing.enabled if existing else True,
-            key="schedule_enabled",
+            key=f"schedule_enabled_{mark}",
         )
-        actor, reason = _reason_fields("schedule")
+        actor, reason = _reason_fields(f"schedule_{mark}")
         if st.form_submit_button("Save schedule", type="primary"):
             _safe_action(lambda: scheduler.save_schedule(
                 profile_id,

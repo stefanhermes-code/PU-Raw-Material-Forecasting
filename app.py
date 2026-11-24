@@ -7093,57 +7093,76 @@ def render_forecast_method_management() -> None:
         return f"{base} ({', '.join(extra)})" if extra else base
 
     identities = _alphabetical(identities, _label)
-    chosen = st.selectbox("Market", identities, format_func=_label, key="method_mgmt_market")
-    identity_key = str(chosen.get("identity_key"))
-    try:
-        fit = client.model_fit(identity_key)
-    except MarketDataEngineUnavailable:
-        st.warning("The engine did not answer for this market.")
-        return
-    if not fit:
-        st.info("The engine holds no governance record for this market yet.")
-        return
+    # The standard chooser (`records.clicked_record`): the markets in a table, and the one clicked
+    # opens. Stefan, 24 November 2026: "under Edit/Delete we see a clickable table, once clicked
+    # the record opens to be edited (not before). Throughout the whole application use this." It
+    # was a dropdown that always had a market open, so the page opened on overrides for a market
+    # nobody had chosen.
+    from raw_material_forecasting.platform_admin.records import clicked_record
 
-    eligible = sorted(m["method_key"] for m in methods if m.get("status") == "PRODUCTION_ELIGIBLE" and m.get("selectable"))
-    for row in admin_rows(fit):
-        weeks = row["horizon_weeks"]
-        with st.expander(f"{row['Horizon']}: {row['Active method']} ({row['Chosen']})", expanded=weeks == 4):
-            st.caption(why_line(fit, weeks))
-            a, b = st.columns(2)
-            a.markdown(f"**Automatic winner:** {row['Automatic winner']}")
-            b.markdown(f"**Override:** {row['Override']}")
-            if row["Override recommendation"]:
-                st.warning(row["Override recommendation"])
-            if row["challengers_ahead"]:
-                st.info("Challengers that out-scored the winner here: " + ", ".join(row["challengers_ahead"]))
-            if row["alternatives"]:
-                st.markdown("**Top alternatives in the last review**")
-                st.dataframe(row["alternatives"], hide_index=True, width="stretch")
-            if row["history"]:
-                st.markdown("**Method history**")
-                st.dataframe(row["history"], hide_index=True, width="stretch")
-            with st.form(f"override_{identity_key}_{weeks}"):
-                method = st.selectbox("Put a method in force (Production Eligible only)",
-                                      _alphabetical(eligible, method_name),
-                                      format_func=method_name, key=f"ovr_m_{identity_key}_{weeks}")
-                actor = st.text_input("Your name", key=f"ovr_a_{identity_key}_{weeks}")
-                reason = st.text_input("Why", key=f"ovr_r_{identity_key}_{weeks}")
-                set_it, remove_it = st.columns(2)
-                do_set = set_it.form_submit_button("Set override")
-                do_remove = remove_it.form_submit_button("Remove override")
-            if do_set or do_remove:
-                try:
-                    if do_set:
-                        client.set_override(identity_key, weeks, method, actor=actor, reason=reason)
-                        st.success(f"{method_name(method)} is now in force for {weeks} weeks.")
-                    else:
-                        out = client.remove_override(identity_key, weeks, actor=actor, reason=reason)
-                        st.success("Override removed." if out.get("status") == "REMOVED" else "There was no override.")
-                    st.rerun()
-                except GovernanceRefused as refused:
-                    st.error(str(refused))
-                except MarketDataEngineUnavailable as exc:
-                    st.error(f"The engine did not answer: {exc}")
+    by_key = {str(row.get("identity_key")): row for row in identities}
+    opened = clicked_record(
+        [{"Market": _label(row),
+          "Chemical": display_chemical(row.get("product_family") or ""),
+          "Geography": str(row.get("market_geography") or ""),
+          "Terms": _display_market_dimension(row.get("commercial_basis") or "")}
+         for row in identities],
+        list(by_key), key="method_mgmt")
+
+    def _one_market(identity_key: str) -> None:
+        try:
+            fit = client.model_fit(identity_key)
+        except MarketDataEngineUnavailable:
+            st.warning("The engine did not answer for this market.")
+            return
+        if not fit:
+            st.info("The engine holds no governance record for this market yet.")
+            return
+
+        eligible = sorted(m["method_key"] for m in methods if m.get("status") == "PRODUCTION_ELIGIBLE" and m.get("selectable"))
+        for row in admin_rows(fit):
+            weeks = row["horizon_weeks"]
+            with st.expander(f"{row['Horizon']}: {row['Active method']} ({row['Chosen']})", expanded=weeks == 4):
+                st.caption(why_line(fit, weeks))
+                a, b = st.columns(2)
+                a.markdown(f"**Automatic winner:** {row['Automatic winner']}")
+                b.markdown(f"**Override:** {row['Override']}")
+                if row["Override recommendation"]:
+                    st.warning(row["Override recommendation"])
+                if row["challengers_ahead"]:
+                    st.info("Challengers that out-scored the winner here: " + ", ".join(row["challengers_ahead"]))
+                if row["alternatives"]:
+                    st.markdown("**Top alternatives in the last review**")
+                    st.dataframe(row["alternatives"], hide_index=True, width="stretch")
+                if row["history"]:
+                    st.markdown("**Method history**")
+                    st.dataframe(row["history"], hide_index=True, width="stretch")
+                with st.form(f"override_{identity_key}_{weeks}"):
+                    method = st.selectbox("Put a method in force (Production Eligible only)",
+                                          _alphabetical(eligible, method_name),
+                                          format_func=method_name, key=f"ovr_m_{identity_key}_{weeks}")
+                    actor = st.text_input("Your name", key=f"ovr_a_{identity_key}_{weeks}")
+                    reason = st.text_input("Why", key=f"ovr_r_{identity_key}_{weeks}")
+                    set_it, remove_it = st.columns(2)
+                    do_set = set_it.form_submit_button("Set override")
+                    do_remove = remove_it.form_submit_button("Remove override")
+                if do_set or do_remove:
+                    try:
+                        if do_set:
+                            client.set_override(identity_key, weeks, method, actor=actor, reason=reason)
+                            st.success(f"{method_name(method)} is now in force for {weeks} weeks.")
+                        else:
+                            out = client.remove_override(identity_key, weeks, actor=actor, reason=reason)
+                            st.success("Override removed." if out.get("status") == "REMOVED" else "There was no override.")
+                        st.rerun()
+                    except GovernanceRefused as refused:
+                        st.error(str(refused))
+                    except MarketDataEngineUnavailable as exc:
+                        st.error(f"The engine did not answer: {exc}")
+
+    if opened is not None:
+        st.markdown(f"#### {_label(by_key[opened])}")
+        _one_market(opened)
 
     st.markdown("### Challengers")
     challengers = [m for m in methods if m.get("status") == "CHALLENGER"]

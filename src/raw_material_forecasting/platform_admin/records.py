@@ -51,10 +51,21 @@ count - puts it back, marked, so it can be read or brought back. The row is stil
 Building it showed the chooser had been calling everything that was not in force "deleted": a
 suspended customer, and an entitlement dated to start next month. Neither is. And a record so
 mislabelled was refused its Delete button, as "already deleted". Both go by `is_deleted` now.
+
+A TABLE, AND THE ROW CLICKED IS THE RECORD THAT OPENS (v1.2.125, the same day)
+------------------------------------------------------------------------------
+Stefan: *"Our standard way of working is that under Edit/Delete we see a clickable table, once
+clicked the record opens to be edited (not before). Throughout the whole application use this."*
+
+So the dropdown is gone and `clicked_record` is the one chooser: the table of records, in the
+Edit / Delete tab, and nothing below it until a row is clicked. The list that used to sit under
+the tabs is that table now - one list, not a list to read and a dropdown to choose from. After a
+save or a delete the record closes and the table shows what changed.
 """
 from __future__ import annotations
 
 import io
+import zlib
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import re
@@ -193,8 +204,10 @@ def reason_fields(prefix: str) -> tuple[str, str]:
 
 # What the last action did, said once at the top of the page it is drawn on next.
 FLASH_KEY = "platform_admin_flash"
-# Set by a write, read once by the chooser on the page drawn after it: see `pick_to_edit`.
-REDRAWN_KEY = "platform_admin_redrawn_after_a_write"
+# {a table's key: the id of the record open under it}. Written by a click: see `clicked_record`.
+OPEN_KEY = "platform_admin_open"
+# {a table's key: the table it was clicked in}. See `clicked_record` for why that is kept.
+OPEN_TABLE_KEY = "platform_admin_open_in"
 # How many writes this session has made. Part of every form's keys: see `form_mark`.
 WRITES_KEY = "platform_admin_writes"
 
@@ -232,7 +245,8 @@ def safe_action(action, *, done: str = "Saved."):
     Drawing it again is the point. Every one of these pages reads its records at the top and draws
     its list at the bottom, so a write made in between left the old record on the screen under the
     word "Saved" - which reads as a save that did not take. The message is carried over the redraw
-    and shown at the top (`show_flash`), and every form comes back as new widgets (`form_mark`).
+    and shown at the top (`show_flash`), every form comes back as new widgets (`form_mark`), and
+    the record that was open closes, so what is on the screen is the table with the change in it.
     """
     from .service import PlatformAdminError
 
@@ -242,46 +256,58 @@ def safe_action(action, *, done: str = "Saved."):
         st.error(str(exc))
         return None
     st.session_state[FLASH_KEY] = done
-    st.session_state[REDRAWN_KEY] = True
+    st.session_state[OPEN_KEY] = {}            # the record closes; the table shows what changed
+    st.session_state[OPEN_TABLE_KEY] = {}
     st.session_state[WRITES_KEY] = int(st.session_state.get(WRITES_KEY, 0)) + 1     # see `form_mark`
     st.rerun()
 
 
-def pick_to_edit(label: str, items: Sequence[Any], *, id_of, name_of, key: str):
-    """The record being edited, or nothing and a new one.
+def clicked_record(rows: Sequence[dict[str, Any]], ids: Sequence[str], *, key: str) -> str | None:
+    """The standard chooser: a table, and the row clicked is the record that opens. Not before.
 
-    These forms save with an upsert keyed on the id in the box, so a form that does not load what
-    is already stored will replace it with blanks the moment an existing id is typed in. And with
-    no chooser there was no other way to change a record at all: you had to know its id by heart
-    and retype every field, and whatever you missed was silently cleared.
+    Stefan, 24 November 2026: *"Our standard way of working is that under Edit/Delete we see a
+    clickable table, once clicked the record opens to be edited (not before). Throughout the whole
+    application use this."* Written once here for every place this application chooses a record
+    to change.
 
-    It sits OUTSIDE the form on purpose. A selector inside `st.form` does nothing until Submit, so
-    the fields could not be filled from it - the form would show the record chosen two clicks ago.
-    The form's key carries the chosen id, so changing the choice rebuilds it.
+    Returns the id of the record that is open, or nothing. `rows` and `ids` run in step.
+
+    A click ANYWHERE on the row opens it. The table is told to answer a click on a cell, and the
+    row of that cell is the record. Told to answer rows instead - which is what the Command
+    Center's grids do - it grows a column of small tick boxes and only a tick opens anything: a
+    click on the customer's name highlighted the name and did nothing (seen in the browser the
+    day this was built).
+
+    What is open is kept by id, under `OPEN_KEY`, and not as the row number the table hands back.
+    A row number is only right for the list it was clicked in: tick "Show deleted" and the second
+    row is a different record. So the table's key carries the list it was drawn from and the
+    number of writes made, a changed list is a new table with nothing clicked in it, and a record
+    clicked in the old one is no longer open.
     """
-    if not items:
-        return None
-    by_id = {id_of(item): item for item in items}
-    # No blank choice. This is the Edit tab: it opened on "Create a new one" and an empty panel,
-    # and a tab for editing with nothing on it to edit is what "does not work" looks like. It
-    # opens on the first record now, and Create has its own tab.
-    # After a save the chooser is told its record again, by id. The browser holds the chosen line
-    # as its words, and a rename changes the words: left alone it went on showing the old name
-    # above the form for the new one, and for any record but the first the choice fell back to
-    # the top of the list - so the next save would have been made on a different record.
-    held = st.session_state.get(f"{key}_record")
-    if st.session_state.pop(REDRAWN_KEY, False) and held in by_id:
-        st.session_state[key] = held
-    elif st.session_state.get(key) not in by_id:
-        # The one chosen last time is no longer listed - deleted a moment ago, or hidden again by
-        # the tick box. Told the first one, not merely forgotten: forgetting left the browser
-        # showing the deleted record's name above the form for a different one (seen in the
-        # browser on v1.2.124, the same defect as the rename above in another place).
-        st.session_state[key] = next(iter(by_id))
-    chosen = st.selectbox(f"{label} to edit or delete", list(by_id),
-                          format_func=lambda i: name_of(by_id[i]), key=key)
-    st.session_state[f"{key}_record"] = chosen
-    return by_id.get(chosen)
+    ids = [str(one) for one in ids]
+    writes = int(st.session_state.get(WRITES_KEY, 0))
+    table_key = f"{key}_table.{writes}.{zlib.crc32('|'.join(ids).encode('utf-8')):x}"
+    opened = st.session_state.get(OPEN_KEY, {}).get(key)
+    clicked_in = st.session_state.get(OPEN_TABLE_KEY, {}).get(key)
+    if opened not in ids or clicked_in not in (None, table_key):
+        opened = None
+
+    def clicked() -> None:
+        cells = st.session_state[table_key]["selection"].get("cells", [])
+        held = dict(st.session_state.get(OPEN_KEY, {}))
+        tables = dict(st.session_state.get(OPEN_TABLE_KEY, {}))
+        if cells and int(cells[0][0]) < len(ids):
+            held[key], tables[key] = ids[int(cells[0][0])], table_key
+        else:                                   # the selection was cleared: the record closes
+            held.pop(key, None)
+            tables.pop(key, None)
+        st.session_state[OPEN_KEY], st.session_state[OPEN_TABLE_KEY] = held, tables
+
+    st.caption("Click a row to open it." if opened is None
+               else "Click another row to open that one.")
+    st.dataframe(pd.DataFrame(list(rows)), width="stretch", hide_index=True, key=table_key,
+                 on_select=clicked, selection_mode="single-cell")
+    return opened
 
 
 # ----------------------------------------------------------------------------- the three tabs
@@ -426,14 +452,20 @@ def shown_records(kind: RecordKind, records: Sequence[Any], *, key: str) -> list
     return list(records) if show else live
 
 
-def record_tabs(kind: RecordKind, records: Sequence[Any], draw_form, *, deactivate, key: str) -> list[Any]:
+def record_tabs(kind: RecordKind, records: Sequence[Any], draw_form, *, deactivate, key: str,
+                listed: Callable[[Any], dict[str, Any]] | None = None,
+                after: Callable[[Any], None] | None = None) -> list[Any]:
     """Create / Edit or Delete / CSV or Excel import, in that order, on every record page.
 
     `draw_form(None)` draws the empty form, `draw_form(record)` the same form filled in. It is the
     page's own, because the fields differ; the three tabs around it do not.
 
-    Returns the records the page shows (`shown_records`), which is what the page draws its list
-    from: a page that listed `records` itself would list what the chooser has just hidden.
+    Edit / Delete is the table of records (`clicked_record`), and a record's form is drawn only
+    once its row is clicked. `listed(record)` is that record's row, in the page's own columns; a
+    spreadsheet row is used when a page gives none. `after(record)` draws what else belongs to an
+    open record between its form and its Delete - a user's sign-in password.
+
+    Returns the records the page shows (`shown_records`).
 
     `st.tabs` runs the body of every tab on every render, which is why the navigation above this
     does not use it. Here it costs nothing: the records were read once before these tabs, and the
@@ -455,17 +487,25 @@ def record_tabs(kind: RecordKind, records: Sequence[Any], draw_form, *, deactiva
                     f"to see one or bring it back, or create a new one.")
         else:
             now = datetime.now(timezone.utc)
+            some_gone = any(is_deleted(record, at=now) for record in shown)
 
-            def named(record: Any) -> str:
-                # Deleted is one thing and not in force is another: see `models.is_deleted`.
-                if is_deleted(record, at=now):
-                    return f"{kind.name_of(record)}  -  {kind.gone}"
-                return kind.name_of(record) + ("" if is_on(record, at=now) else "  -  not active")
+            def row(record: Any) -> dict[str, Any]:
+                cells = dict((listed or kind.to_row)(record))
+                if some_gone:                    # only once the box is ticked, so only then a column
+                    cells[kind.gone.title()] = "yes" if is_deleted(record, at=now) else ""
+                return cells
 
-            chosen = pick_to_edit(kind.noun.title(), shown, id_of=kind.id_of, key=f"{key}_pick",
-                                  name_of=named)
+            opened = clicked_record([row(record) for record in shown],
+                                    [kind.id_of(record) for record in shown], key=key)
+            chosen = next((record for record in shown if str(kind.id_of(record)) == opened), None)
             if chosen is not None:
+                # Deleted is one thing and not in force is another: see `models.is_deleted`.
+                state = (kind.gone if is_deleted(chosen, at=now)
+                         else "" if is_on(chosen, at=now) else "not active")
+                st.markdown(f"#### {kind.name_of(chosen)}" + (f"  -  {state}" if state else ""))
                 draw_form(chosen)
+                if after is not None:
+                    after(chosen)
                 _switch_off(kind, chosen, deactivate=deactivate, key=key)
     with sheet_tab:
         _spreadsheet(kind, shown, key=key, left_out=len(records) - len(shown),
