@@ -152,8 +152,9 @@ def _months_table(rows: list[tuple[date, float]], currency: str, width: int,
         _table(["Month", f"Price {units.pair(currency)}", "Low", "High"], body,
                [int(width * .34), int(width * .22), int(width * .22), int(width * .22)],
                numeric={1, 2, 3}),
-        _p(_run("A month's price is the middle of the prices printed in it, the same figure the "
-                "forecast is built from. Low and high are the month's lowest and highest print.",
+        _p(_run("A month's price is the middle of the prices printed in it. The forecast is built "
+                "from these, and for the month still running from its latest price. Low and high "
+                "are the month's lowest and highest print.",
                 size=SMALL, italic=True, color=GREY), after=160),
     ]
 

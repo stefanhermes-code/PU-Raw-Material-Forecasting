@@ -168,10 +168,27 @@ class Prepared:
 
 def prepare(identity: MarketIdentityModel, rows: Sequence[dict[str, Any]], issue_date: date, *,
             frequency: str | None = None) -> Prepared | None:
-    """The history a method is asked with at the issue date - the way the backtest asked it (WP3 gate
-    condition 5): at the frequency it was examined at, and standing on the newest COMPLETE period. A
-    period still being printed (this month's half-month median) is left out, exactly as a backtest
-    origin is only asked once its period has ended or been published."""
+    """The history a method is asked with at the issue date: at the frequency it was examined at,
+    everything readable on that day, ending on the newest price.
+
+    UNTIL v1.2.116 THIS STOOD ON THE NEWEST *COMPLETE* PERIOD (WP3 gate condition 5). A period still
+    being printed was left out, "exactly as a backtest origin is only asked once its period has
+    ended", so that a half-month median or a late publisher's part-published week would not anchor
+    the live number. The reasoning was about the MEDIAN of an unfinished period and it was right
+    about that. Its cost was that a forecast issued on 23 November stood on October and reached one
+    month further: Polyether Polyol China was forecast from 10,752 yuan while the market printed
+    9,436.
+
+    Measured on 38 weekly series, 2011-2023 (`scripts/latest_price_vs_month`), that starting point
+    was off by 8.3-8.7% one month ahead against 5.0-5.3% from the newest print - closer in three
+    market-months out of four, in every third of the month. Stefan, 24 November 2026: "Yes, build
+    it."
+
+    So the unfinished period is in, at its newest price and not at its median: `build_history`
+    ends every history that way, for the tournament's origins as for this, which keeps the
+    condition's own point - the method is asked the way it was examined. What a row may be seen on
+    which day is still `visible_rows`' business and has not moved.
+    """
     key = identity_key_of(identity)
     chemical = str(identity.product_family or "UNKNOWN")
     # The unit the STORE holds for this identity, not a literal. They agree since migration
@@ -180,21 +197,6 @@ def prepare(identity: MarketIdentityModel, rows: Sequence[dict[str, Any]], issue
     unit = f"{identity.currency}/{held}" if identity.currency else held
     built = build_history(rows, issue_date, identity_key=key, chemical=chemical, frequency=frequency, unit=unit)
     if not built.series.points:
-        return None
-    # Stand on the newest period that has ENDED and been PUBLISHED by the issue date, and read the history
-    # on the day that period was complete - the tournament's own rule (`asked_on`), so a late publisher's
-    # part-published week does not anchor the live number (WP3 gate, third review, finding 3).
-    from app.forecasting.tournament import asked_on, first_published
-    frequency = built.series.frequency
-    published = first_published(rows, frequency)
-    complete = [day for day in built.series.dates if asked_on(day, frequency, published) <= issue_date
-                and day not in set(built.interpolated)]
-    if not complete:
-        return None
-    anchor = complete[-1]
-    asked = asked_on(anchor, frequency, published)
-    built = build_history(rows, asked, identity_key=key, chemical=chemical, frequency=frequency, unit=unit)
-    if not built.series.points or built.series.last_date != anchor:
         return None
     last = built.series.last_date
     from datetime import timedelta

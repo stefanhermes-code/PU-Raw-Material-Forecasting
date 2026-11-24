@@ -118,8 +118,8 @@ def _blocks(content, *, today: date | None = None) -> list[tuple]:
                              "heading between the price you can see and the month you are buying "
                              "for."))
             out.append(("p", f"The forecast is for the typical price across {month}, and the "
-                             "market price is one day. After a sharp move inside a month the two "
-                             "can sit further apart than the market is likely to travel."))
+                             "market price is one day. The forecast starts from that price: it "
+                             "is the last thing the method reads before it answers."))
         else:
             out.append(("p", f"The forecast is {abs(content.move):.1f}% {way} the last published price "
                              f"of {_money(currency, content.previous_value)} for "

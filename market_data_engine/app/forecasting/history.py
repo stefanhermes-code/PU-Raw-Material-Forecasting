@@ -15,6 +15,10 @@ missing instead, and a method asked at that origin is skipped cleanly (Review Fo
 
 Buckets use `service.bucket` - the engine's own median-per-period - so the tournament fits on
 exactly what the live forecast fits on.
+
+Since v1.2.116 the newest period is the one exception: it is counted at the newest price the
+cutoff allows rather than at the median of its prints so far. The truth a forecast is scored
+against (`truth_at`) is still the whole period's median.
 """
 from __future__ import annotations
 
@@ -24,7 +28,8 @@ from typing import Any, Iterable, Sequence
 
 from app.forecasting.adapter import DAILY, WEEKLY, Series
 from raw_material_forecasting.units import MT
-from app.forecasting.service import _as_date, _period, best_frequency, bucket
+from app.forecasting.service import (
+    _as_date, _period, best_frequency, bucket, ending_on_the_newest_price)
 
 
 @dataclass(frozen=True)
@@ -167,6 +172,10 @@ def build_history(rows: Sequence[dict[str, Any]], cutoff: date, *, identity_key:
         frequency, points, _why = best_frequency(visible)
     else:
         points = bucket(visible, frequency)
+    # Ending on the newest price the cutoff allows, not on the median of a period still being
+    # printed: see `service.ending_on_the_newest_price`. Here rather than in each caller, because
+    # this is the one history the tournament examines a method on AND production asks it with.
+    points = ending_on_the_newest_price(points, visible, frequency, cutoff)
     filled, interpolated, missing = interpolate_internal_gaps(points, cutoff, frequency, max_gap)
     newest = max((_as_date(r.get("observation_date")) for r in visible), default=None)
     last_bucket = max(filled) if filled else None

@@ -96,6 +96,65 @@ def bucket(rows: Iterable[dict[str, Any]], frequency: str) -> dict[date, float]:
     return {day: float(median(values)) for day, values in sorted(buckets.items())}
 
 
+def ending_on_the_newest_price(points: dict[date, float], rows: Iterable[dict[str, Any]],
+                               frequency: str, on_or_before: date | None = None) -> dict[date, float]:
+    """The bucketed series, with the period holding the newest print counted AT that print.
+
+    WHAT THIS IS FOR
+    ----------------
+    A bucket is the median of its period's prints, and for every period that is over that is the
+    figure to fit on and to score against. The period we are standing in is not over. Its median
+    is the median of the prints SO FAR, and late in a month that has moved it is well behind the
+    market: on 23 November 2026 Polyether Polyol China had printed 9,436 yuan and its November
+    bucket was 10,459. The stored forecast did not use November at all - it stood on October.
+
+    Stefan, 24 November 2026, with the market price now printed beside the forecast: *"test
+    starting the forecast from the latest price"*, then *"Yes, build it."*
+
+    WHAT THE TEST SAID
+    ------------------
+    `scripts/latest_price_vs_month`: 38 weekly series of TDI, MDI and polyols, 2011 to 2023, every
+    print day of 2,857 market-months, the engine's own carry-forward, momentum and ETS, scored
+    against the full median of the month that followed. Mean absolute error one month ahead:
+
+        from the last FINISHED month, one step further   8.3 - 8.7%   (the stored forecast)
+        from the unfinished month's median so far        5.7 - 5.9%   (the page's own forecast)
+        from the newest print                            5.0 - 5.3%
+
+    The newest print was closer than the finished month in 74-83% of market-months and closer
+    than the median so far in 70-84%. Nothing in the first ten days of a month separates the last
+    two; in the last ten the newest print is a fifth to a quarter better; where the price had
+    moved more than 6% inside the month it roughly halves the error. By three months ahead the
+    gain over the median is 0.1-0.3 points and for momentum none. A price that moved inside a month
+    was back on the month's side of itself a month later 19% of the time.
+
+    THE RULE, AND WHAT IT LEAVES ALONE
+    ----------------------------------
+    The last word in a series is the newest price. Every period before it keeps its median, and
+    so does the truth a forecast is scored against - `bucket`, `truth_at` and `vintages.settle`
+    are untouched, so a month is still judged on its whole median once it is over.
+
+    When the next period's first print lands, this period goes back to being its median and the
+    new one takes the print. A market that prints once a period is unchanged: its newest print
+    IS its bucket. A daily series is unchanged for the same reason.
+
+    One function, called where a series is put together: `forecast_identity` for the page's own
+    forecast and `history.build_history` for the stored forecast, the eligibility rules and the
+    method tournament - so a method is examined on the kind of history it is then asked with.
+    """
+    if not points or frequency == DAILY:
+        return points
+    newest = _latest_print(list(rows), on_or_before)
+    if newest is None:
+        return points
+    period = _period(_as_date(newest["date"]), frequency)
+    if period not in points:
+        return points
+    out = dict(points)
+    out[period] = float(newest["value"])
+    return out
+
+
 def availability_by_period(rows: Iterable[dict[str, Any]], frequency: str) -> dict[date, date]:
     """When each period's value could first have been read, as opposed to what date it refers to.
 
@@ -285,6 +344,9 @@ def forecast_identity(rows: Sequence[dict[str, Any]], *, identity_key: str, chem
     """
     registry = registry or default_registry()
     frequency, history, resolution = best_frequency(rows)
+    # The series ends on the newest price, not on the median of a period still being printed.
+    # A caller that names its as-of gets the newest price it could have had on that day.
+    history = ending_on_the_newest_price(history, rows, frequency, as_of)
     # When each period became readable, for the rolling backtest behind the bands. Empty when the
     # rows carry no availability, and then the roll behaves exactly as it did before.
     availability = availability_by_period(rows, frequency)
