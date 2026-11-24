@@ -39,6 +39,18 @@ seven pages:
     with no entry in the change history. The service now asks for who and why before it writes.
   * Delete was called "Switch off". It still does what Stefan chose on 31 October - the row is
     kept - and it is called Delete, which is the word on the tab.
+
+A DELETED RECORD LEAVES THE PAGE (v1.2.124, the same day)
+---------------------------------------------------------
+Asked whether a deleted record should disappear from the list behind a tick box, Stefan: *"Yes,
+hide them."* A delete that leaves the record in the list, in the chooser and in the download reads
+as a delete that did not happen. So what `models.is_deleted` says is deleted is left out of all
+three, and one tick box above the tabs - drawn only when there is something behind it, with the
+count - puts it back, marked, so it can be read or brought back. The row is still kept.
+
+Building it showed the chooser had been calling everything that was not in force "deleted": a
+suspended customer, and an entitlement dated to start next month. Neither is. And a record so
+mislabelled was refused its Delete button, as "already deleted". Both go by `is_deleted` now.
 """
 from __future__ import annotations
 
@@ -51,7 +63,7 @@ from typing import Any, Callable, Iterable, Sequence
 import pandas as pd
 import streamlit as st
 
-from .models import EntitlementScope, is_on, scope_to_dict, switched_off  # noqa: F401
+from .models import EntitlementScope, is_deleted, is_on, scope_to_dict, switched_off  # noqa: F401
 
 CREATE, EDIT, IMPORT = "Create", "Edit / Delete", "CSV / Excel import"
 TAB_LABELS = [CREATE, EDIT, IMPORT]
@@ -157,6 +169,18 @@ class RecordKind:
     to_row: Callable[[Any], dict[str, Any]]     # a record -> one spreadsheet row
     from_row: Callable[[dict[str, Any]], Any]   # one spreadsheet row -> a record
     save: Callable[[Any, str, str], Any]        # (record, actor, reason) -> saved
+    # The word for a record `is_deleted` is true of. An entitlement that was deleted and one that
+    # ran out are the same row, so those two kinds say "ended".
+    gone: str = "deleted"
+
+    @property
+    def plural(self) -> str:
+        return f"{self.noun[:-1]}ies" if self.noun.endswith("y") else f"{self.noun}s"
+
+    @property
+    def show_gone(self) -> str:
+        """The words on the tick box, which other messages point the reader to."""
+        return f"Show {self.gone} {self.plural}"
 
 
 # ----------------------------------------------------------------------------- shared small parts
@@ -249,7 +273,11 @@ def pick_to_edit(label: str, items: Sequence[Any], *, id_of, name_of, key: str):
     if st.session_state.pop(REDRAWN_KEY, False) and held in by_id:
         st.session_state[key] = held
     elif st.session_state.get(key) not in by_id:
-        st.session_state.pop(key, None)            # the one chosen last time is no longer listed
+        # The one chosen last time is no longer listed - deleted a moment ago, or hidden again by
+        # the tick box. Told the first one, not merely forgotten: forgetting left the browser
+        # showing the deleted record's name above the form for a different one (seen in the
+        # browser on v1.2.124, the same defect as the rename above in another place).
+        st.session_state[key] = next(iter(by_id))
     chosen = st.selectbox(f"{label} to edit or delete", list(by_id),
                           format_func=lambda i: name_of(by_id[i]), key=key)
     st.session_state[f"{key}_record"] = chosen
@@ -262,9 +290,11 @@ def _switch_off(kind: RecordKind, record: Any, *, deactivate, key: str) -> None:
     now = datetime.now(timezone.utc)
     st.divider()
     st.markdown(f"**Delete this {kind.noun}**")
-    if not is_on(record, at=now):
-        st.caption(f"This {kind.noun} is already deleted: it is switched off and no longer applies. "
-                   f"Edit it above to bring it back.")
+    # `is_deleted`, not "not in force": a suspended customer and an entitlement that has not
+    # started yet are both off, and both were refused this button as "already deleted".
+    if is_deleted(record, at=now):
+        st.caption(f"This {kind.noun} is already {kind.gone}: it is switched off and no longer "
+                   f"applies. Edit it above to bring it back.")
         return
     st.caption(
         f"A deleted {kind.noun} is switched off from now and no longer applies. The row is kept, "
@@ -276,7 +306,7 @@ def _switch_off(kind: RecordKind, record: Any, *, deactivate, key: str) -> None:
         if st.form_submit_button(f"Delete this {kind.noun}", type="secondary"):
             safe_action(lambda: deactivate(record, actor=actor, reason=reason),
                         done=f"Deleted: {kind.name_of(record)} is switched off and kept in the "
-                             f"change history.")
+                             f"change history. Tick '{kind.show_gone}' to see it.")
 
 
 def _sheet_bytes(frame: pd.DataFrame) -> bytes:
@@ -293,29 +323,36 @@ def _read_upload(upload) -> pd.DataFrame | None:
     return pd.read_csv(upload)
 
 
-def _spreadsheet(kind: RecordKind, records: Sequence[Any], *, key: str) -> None:
+def _spreadsheet(kind: RecordKind, records: Sequence[Any], *, key: str,
+                 held_ids: frozenset[str] | None = None, left_out: int = 0) -> None:
     """Export what is held, edit it anywhere, bring it back.
 
     An import updates a row whose id already exists and creates one whose id does not - Stefan's
     choice, 31 October 2026 - so the sheet is a way of correcting twenty records at once and not
     only of loading the first twenty. Every row written goes through the same service call the form
     uses, so a spreadsheet cannot grant what a person could not.
+
+    `records` is what the page shows, so a download is what is on the screen. `held_ids` is every
+    id in the store, shown or not: a row for a deleted record is an update, and saying "create"
+    for it would be wrong about what the upload is about to do.
     """
     held = pd.DataFrame([kind.to_row(record) for record in records])
     st.caption(
         f"Download what is held, change it in Excel, upload it back. A row whose "
-        f"{kind.noun} ID already exists is updated; one whose ID is new is created.")
+        f"{kind.noun} ID already exists is updated; one whose ID is new is created."
+        + (f" The download leaves out the {left_out} {kind.gone}; tick '{kind.show_gone}' above "
+           f"to include them." if left_out else ""))
     if not held.empty:
         left, right = st.columns(2)
         left.download_button("Download as CSV", held.to_csv(index=False).encode("utf-8"),
-                             file_name=f"{kind.noun}s.csv", mime="text/csv",
+                             file_name=f"{kind.plural}.csv", mime="text/csv",
                              key=f"{key}_csv", width="stretch")
         right.download_button(
-            "Download as Excel", _sheet_bytes(held), file_name=f"{kind.noun}s.xlsx",
+            "Download as Excel", _sheet_bytes(held), file_name=f"{kind.plural}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             key=f"{key}_xlsx", width="stretch")
     else:
-        st.info(f"No {kind.noun} is held yet, so there is nothing to download. An upload still "
+        st.info(f"No {kind.noun} is shown, so there is nothing to download. An upload still "
                 f"works: its column names are what a download would have written.")
 
     upload = st.file_uploader("CSV or Excel file", type=["csv", "xlsx", "xlsm"], key=f"{key}_upload")
@@ -330,7 +367,7 @@ def _spreadsheet(kind: RecordKind, records: Sequence[Any], *, key: str) -> None:
         st.warning("That file has no rows.")
         return
 
-    known = {kind.id_of(record) for record in records}
+    known = held_ids if held_ids is not None else {kind.id_of(record) for record in records}
     rows = [{str(k): v for k, v in row.items()} for row in frame.to_dict(orient="records")]
     # Said before anything is written, because "20 rows imported" after the event is not an answer
     # to "what did that do to my customers?".
@@ -371,16 +408,38 @@ def _spreadsheet(kind: RecordKind, records: Sequence[Any], *, key: str) -> None:
                 st.error("These were refused:\n\n" + "\n\n".join(refused[:10]))
 
 
-def record_tabs(kind: RecordKind, records: Sequence[Any], draw_form, *, deactivate, key: str) -> None:
+def shown_records(kind: RecordKind, records: Sequence[Any], *, key: str) -> list[Any]:
+    """What the page shows: everything not deleted, and the deleted too once the box is ticked.
+
+    One box for the chooser, the list and the download, because three boxes would be three chances
+    for a page to show a record in one place that it hides in another. It is drawn only when
+    something is behind it, and says how many, so a page with nothing deleted looks as it did.
+    """
+    now = datetime.now(timezone.utc)
+    live = [record for record in records if not is_deleted(record, at=now)]
+    if len(live) == len(records):
+        return live
+    show = st.checkbox(
+        f"{kind.show_gone} ({len(records) - len(live)})", key=f"{key}_show_gone",
+        help=f"A {kind.gone} {kind.noun} is switched off and kept. Tick this to see it in the "
+             f"chooser, the list and the download, and to bring it back by editing it.")
+    return list(records) if show else live
+
+
+def record_tabs(kind: RecordKind, records: Sequence[Any], draw_form, *, deactivate, key: str) -> list[Any]:
     """Create / Edit or Delete / CSV or Excel import, in that order, on every record page.
 
     `draw_form(None)` draws the empty form, `draw_form(record)` the same form filled in. It is the
     page's own, because the fields differ; the three tabs around it do not.
 
+    Returns the records the page shows (`shown_records`), which is what the page draws its list
+    from: a page that listed `records` itself would list what the chooser has just hidden.
+
     `st.tabs` runs the body of every tab on every render, which is why the navigation above this
     does not use it. Here it costs nothing: the records were read once before these tabs, and the
     three panels only draw widgets over what is already in hand.
     """
+    shown = shown_records(kind, records, key=key)
     # Keyed, and told to the server. An unkeyed tab bar is remembered by the browser alone and
     # only for as long as nothing above it on the page changes - so the message a save puts at the
     # top of the page threw the reader from Edit / Delete back to Create, on the record they had
@@ -391,13 +450,24 @@ def record_tabs(kind: RecordKind, records: Sequence[Any], draw_form, *, deactiva
     with edit_tab:
         if not records:
             st.info(f"No {kind.noun} is held yet. Create one first.")
+        elif not shown:
+            st.info(f"Every {kind.noun} held here is {kind.gone}. Tick '{kind.show_gone}' above "
+                    f"to see one or bring it back, or create a new one.")
         else:
             now = datetime.now(timezone.utc)
-            chosen = pick_to_edit(
-                kind.noun.title(), records, id_of=kind.id_of, key=f"{key}_pick",
-                name_of=lambda r: kind.name_of(r) + ("" if is_on(r, at=now) else "  -  deleted"))
+
+            def named(record: Any) -> str:
+                # Deleted is one thing and not in force is another: see `models.is_deleted`.
+                if is_deleted(record, at=now):
+                    return f"{kind.name_of(record)}  -  {kind.gone}"
+                return kind.name_of(record) + ("" if is_on(record, at=now) else "  -  not active")
+
+            chosen = pick_to_edit(kind.noun.title(), shown, id_of=kind.id_of, key=f"{key}_pick",
+                                  name_of=named)
             if chosen is not None:
                 draw_form(chosen)
                 _switch_off(kind, chosen, deactivate=deactivate, key=key)
     with sheet_tab:
-        _spreadsheet(kind, records, key=key)
+        _spreadsheet(kind, shown, key=key, left_out=len(records) - len(shown),
+                     held_ids=frozenset(kind.id_of(record) for record in records))
+    return shown

@@ -23,6 +23,7 @@ from raw_material_forecasting.platform_admin.models import (
     Recipient,
     TemporaryEntitlement,
     UserAccess,
+    is_deleted,
     scope_to_dict,
 )
 from raw_material_forecasting.platform_admin.records import (
@@ -315,8 +316,15 @@ def _select_company(service: PlatformAdminService, key: str) -> str | None:
     if not companies:
         st.info("Create a company first.")
         return None
-    ids = list(companies)
-    return st.selectbox("Company", ids, format_func=lambda cid: f"{companies[cid].name} ({cid})", key=key)
+    # A deleted customer is still here, last and marked. Its users, recipients and entitlements
+    # are rows that are kept, and this is the only way to them; leaving it out would have made
+    # them unreachable until the customer was brought back.
+    now = datetime.now(timezone.utc)
+    gone = {cid for cid, company in companies.items() if is_deleted(company, at=now)}
+    ids = [cid for cid in companies if cid not in gone] + [cid for cid in companies if cid in gone]
+    return st.selectbox(
+        "Company", ids, key=key,
+        format_func=lambda cid: f"{companies[cid].name} ({cid})" + ("  -  deleted" if cid in gone else ""))
 
 
 # How long before a contract or a grant running out is worth putting on the front page. A contract
@@ -486,10 +494,10 @@ def _render_companies(service: PlatformAdminService) -> None:
                     actor=actor, reason=reason,
                 ))
 
-    record_tabs(_company_kind(service), companies, form,
-                deactivate=service.deactivate, key="company")
-    if companies:
-        st.dataframe(pd.DataFrame([c.__dict__ for c in companies]), width="stretch", hide_index=True)
+    shown = record_tabs(_company_kind(service), companies, form,
+                        deactivate=service.deactivate, key="company")
+    if shown:
+        st.dataframe(pd.DataFrame([c.__dict__ for c in shown]), width="stretch", hide_index=True)
 
 
 def _package_kind(service: PlatformAdminService) -> RecordKind:
@@ -536,17 +544,17 @@ def _render_packages(service: PlatformAdminService) -> None:
                                       name.strip(), scope, active), actor=actor, reason=reason
                 ))
 
-    record_tabs(_package_kind(service), packages, form,
-                deactivate=service.deactivate, key="package")
-    if packages:
+    shown = record_tabs(_package_kind(service), packages, form,
+                        deactivate=service.deactivate, key="package")
+    if shown:
         st.dataframe(pd.DataFrame([
-            {"Package ID": p.package_id, "Name": p.name, "Active": p.active, **scope_to_dict(p.scope)} for p in packages
+            {"Package ID": p.package_id, "Name": p.name, "Active": p.active, **scope_to_dict(p.scope)} for p in shown
         ]), width="stretch", hide_index=True)
 
 
 def _permanent_kind(service: PlatformAdminService, company_id: str) -> RecordKind:
     return RecordKind(
-        noun="entitlement",
+        noun="entitlement", gone="ended",
         id_of=lambda e: e.entitlement_id,
         name_of=lambda e: f"{e.entitlement_id} (from {e.effective_from.date()})",
         to_row=lambda e: {
@@ -607,11 +615,10 @@ def _render_permanent(service: PlatformAdminService) -> None:
                     ), actor=actor, reason=reason,
                 ))
 
-    record_tabs(_permanent_kind(service, company_id), [current] if current else [], form,
-                deactivate=service.deactivate, key=f"permanent_{company_id}")
-    current = service.repo.get_company_entitlement(company_id)
-    if current:
-        st.json(scope_to_dict(current.scope))
+    shown = record_tabs(_permanent_kind(service, company_id), [current] if current else [], form,
+                        deactivate=service.deactivate, key=f"permanent_{company_id}")
+    if shown:
+        st.json(scope_to_dict(shown[0].scope))
 
 
 TEMPORARY_REASONS = ["Trial", "Evaluation", "Commercial Exception"]
@@ -619,7 +626,7 @@ TEMPORARY_REASONS = ["Trial", "Evaluation", "Commercial Exception"]
 
 def _temporary_kind(service: PlatformAdminService, company_id: str) -> RecordKind:
     return RecordKind(
-        noun="grant",
+        noun="grant", gone="ended",
         id_of=lambda g: g.entitlement_id,
         name_of=lambda g: f"{g.entitlement_id} ({g.reason_type}, to {g.effective_to.date()})",
         to_row=lambda g: {
@@ -669,16 +676,16 @@ def _render_temporary(service: PlatformAdminService) -> None:
                     ), actor=actor, reason=audit_reason,
                 ))
 
-    record_tabs(_temporary_kind(service, company_id), grants, form,
-                deactivate=service.deactivate, key=f"temporary_{company_id}")
-    if grants:
+    shown = record_tabs(_temporary_kind(service, company_id), grants, form,
+                        deactivate=service.deactivate, key=f"temporary_{company_id}")
+    if shown:
         now = datetime.now(timezone.utc)
         st.dataframe(pd.DataFrame([
             {
                 "ID": g.entitlement_id, "Type": g.reason_type, "Reason": g.reason,
                 "From": g.effective_from, "To": g.effective_to, "Active now": g.is_active(now),
                 "Scope": scope_to_dict(g.scope),
-            } for g in grants
+            } for g in shown
         ]), width="stretch", hide_index=True)
 
 
@@ -728,15 +735,15 @@ def _render_users(service: PlatformAdminService) -> None:
                                email.strip(), role, scope, active), actor=actor, reason=reason
                 ))
 
-    record_tabs(_user_kind(service, company_id), users, form,
-                deactivate=service.deactivate, key=f"user_{company_id}")
-    if users:
+    shown = record_tabs(_user_kind(service, company_id), users, form,
+                        deactivate=service.deactivate, key=f"user_{company_id}")
+    if shown:
         st.dataframe(pd.DataFrame([
             {"User ID": u.user_id, "Email": u.email, "Role": u.role, "Active": u.active,
              "Password": _password_state(service, u.email), "Scope": scope_to_dict(u.scope)}
-            for u in users
+            for u in shown
         ]), width="stretch", hide_index=True)
-        _render_user_passwords(service, users)
+        _render_user_passwords(service, shown)
 
 
 def _password_state(service: PlatformAdminService, email: str) -> str:
@@ -870,10 +877,10 @@ def _render_recipients(service: PlatformAdminService) -> None:
                     exception_reason=exception_reason if allow_external else None,
                 ))
 
-    record_tabs(_recipient_kind(service, company_id), recipients, form,
-                deactivate=service.deactivate, key=f"recipient_{company_id}")
-    if recipients:
-        st.dataframe(pd.DataFrame([r.__dict__ for r in recipients]), width="stretch", hide_index=True)
+    shown = record_tabs(_recipient_kind(service, company_id), recipients, form,
+                        deactivate=service.deactivate, key=f"recipient_{company_id}")
+    if shown:
+        st.dataframe(pd.DataFrame([r.__dict__ for r in shown]), width="stretch", hide_index=True)
 
 
 def _profile_kind(service: PlatformAdminService, company_id: str) -> RecordKind:
@@ -942,15 +949,15 @@ def _render_delivery_profiles(service: PlatformAdminService) -> None:
                     ), actor=actor, reason=reason,
                 ))
 
-    record_tabs(_profile_kind(service, company_id), profiles, form,
-                deactivate=service.deactivate, key=f"profile_{company_id}")
-    if profiles:
+    shown = record_tabs(_profile_kind(service, company_id), profiles, form,
+                        deactivate=service.deactivate, key=f"profile_{company_id}")
+    if shown:
         st.dataframe(pd.DataFrame([
             {
                 "Profile": p.name, "Frequency": p.frequency, "Formats": sorted(p.formats),
                 "Channels": sorted(p.channels), "Recipients": sorted(p.recipient_ids),
                 "Active": p.active, "Scope": scope_to_dict(p.scope),
-            } for p in profiles
+            } for p in shown
         ]), width="stretch", hide_index=True)
 
 

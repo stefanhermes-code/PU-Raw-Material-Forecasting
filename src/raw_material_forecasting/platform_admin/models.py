@@ -219,6 +219,25 @@ def is_on(record: Any, *, at: datetime) -> bool:
     return bool(getattr(record, "active", True))
 
 
+def is_deleted(record: Any, *, at: datetime) -> bool:
+    """Whether this record has been deleted - for an entitlement or a grant, whether it has ended.
+
+    Not the opposite of `is_on`, and the difference is the reason this exists. A suspended
+    customer is off and has not been deleted. An entitlement that starts next month is off and
+    has not been deleted. Both have to stay on the page: the first because somebody will lift the
+    suspension, the second because it was typed in this morning. What leaves the page (v1.2.124,
+    Stefan, 24 November 2026: "Yes, hide them") is what `switched_off` produces, and only that.
+
+    An entitlement deleted and one that ran out read the same, because deleting one IS ending it
+    now. So the pages call those two kinds "ended", which is true of both.
+    """
+    if isinstance(record, Company):
+        return record.status == CLOSED_COMPANY_STATUS
+    if isinstance(record, (CompanyEntitlement, TemporaryEntitlement)):
+        return record.effective_to is not None and record.effective_to <= at
+    return not bool(getattr(record, "active", True))
+
+
 def switched_off(record: Any, *, at: datetime) -> Any:
     """The same record, switched off. The one writer of those seven ways.
 
