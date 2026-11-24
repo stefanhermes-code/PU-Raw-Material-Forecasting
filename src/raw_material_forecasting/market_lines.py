@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Container, Iterable
+from typing import Any, Container, Iterable, Sequence
 
 from raw_material_forecasting import price_kinds, units
 from raw_material_forecasting.market_basis import display_basis, stated_packaging
@@ -386,6 +386,46 @@ def lines_packaged(lines: Iterable[MarketLine], packaging: str) -> list[MarketLi
     """The lines drawn for one packaging."""
     wanted = _stated(packaging)
     return [line for line in lines if line.packaging == wanted]
+
+
+def opening_packaging(lines: Iterable[MarketLine], basis: str, offered: Sequence[str]) -> str:
+    """The packaging Current Market opens a set of terms on: the first one priced now.
+
+    Moved here from the page on 24 November 2026 so the Forecast page can ask the same question
+    and get the same answer. See `headline_price`.
+    """
+    wanted = _text(basis).upper()
+    offered = tuple(offered) or ("",)
+    return next((line.packaging for line in lines
+                 if line.basis.upper() == wanted and current_price(line)), offered[0])
+
+
+def headline_price(lines: Iterable[MarketLine], basis: str, packaging: str,
+                   *, as_of: date | None = None) -> tuple[str, float] | None:
+    """The day and the figure the Current Market card prints for one selection, or nothing.
+
+    ONE PLACE, BECAUSE TWO PAGES PRINT IT
+    --------------------------------------
+    Stefan, 24 November 2026, Polyether Polyol - China - EXW: Current Market said USD 1,597 priced
+    23 November, the Forecast card said "Last published - November 2026, USD 1,566", and the
+    Forecast chart drew 23 November at 1,405. *"A customer would expect this to be the same number
+    and any calculations coming from this (like reduce percentage) to stem from there."*
+
+    Three figures from three rules: the mean of that day's prints with China's VAT still in them;
+    the median of November so far, net; and the consolidated value, net, one publisher behind
+    because the second print landed after the day's consolidation ran. Each was defensible where
+    it stood and no reader could have known which he was looking at.
+
+    The rule is the card's own and it has not changed: of the lines drawn on these terms in this
+    packaging, the one priced most recently, and where two are equally recent the longer record.
+    What changed is that the card no longer owns it. The Forecast page asks here too, so its card,
+    its percentage, the point its chart starts from and the report under it are this figure and
+    cannot be another one.
+    """
+    chosen = [line for line in lines_packaged(lines_on(lines, basis), packaging)
+              if current_price(line, as_of=as_of)]
+    line = max(chosen, key=lambda one: (one.last_day, len(one.points)), default=None)
+    return current_price(line, as_of=as_of) if line is not None else None
 
 
 def drawable_selections(identities: Iterable[dict[str, Any]],

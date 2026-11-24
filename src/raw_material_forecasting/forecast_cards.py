@@ -412,6 +412,18 @@ class BannerContent:
     previous: str = "-"
     previous_month: str = "-"
     previous_value: float | None = None
+    # The day of the market price the forecast is read against, where there is one: "23 Nov 2026".
+    #
+    # Since 24 November 2026 the figure beside the forecast is the price Current Market shows, on
+    # the day it shows it, and the percentage is measured from it - Stefan: "a customer would
+    # expect this to be the same number and any calculations coming from this to stem from there."
+    # The September reasoning above was right about the arithmetic and wrong about the reader: a
+    # month's median is a number no page of this application shows anywhere else, so nobody could
+    # check it, and on Polyether Polyol China it read USD 1,566 beside a market at 1,413.
+    #
+    # Empty where the market has no current price. The bucket then stands, labelled as what it
+    # is, exactly as before.
+    previous_day: str = ""
     coverages: tuple[str, ...] = BANNER_COVERAGES
     forecast_value: float | None = None
     currency: str = ""         # the currency the reader is being shown, e.g. "USD"
@@ -546,7 +558,8 @@ def trials_for(point: dict) -> int | None:
 
 def banner_content(payload: dict, points: list[dict], *, show,
                    today: float | None, as_at, title: str = "",
-                   amount=None, currency: str = "", show_today=None) -> BannerContent:
+                   amount=None, currency: str = "", show_today=None,
+                   market_price: tuple[str, float] | None = None) -> BannerContent:
     """The banner: today, next month's forecast, and a band per stated probability.
 
     `show` formats an amount in the reader's currency. `show_today` formats one that is ALREADY in
@@ -555,6 +568,11 @@ def banner_content(payload: dict, points: list[dict], *, show,
 
     Only the FIRST point is used. The page still asks the engine for three horizons and still draws
     all three on the chart; the banner is the month a buyer plans.
+
+    `market_price` is the day and the figure Current Market prints for this market, ALREADY in the
+    reader's currency - `market_lines.headline_price`. Where it is given it is the reference: the
+    figure printed beside the forecast and the one the percentage is measured from. Where it is
+    not - a market nobody has priced inside the current window - the month's bucket stands in.
     """
     convert = amount if amount is not None else (lambda _value: None)
     point = points[0] if points else None
@@ -582,6 +600,30 @@ def banner_content(payload: dict, points: list[dict], *, show,
     # The bucket the model forecast from, which is the only figure on the same basis as the forecast.
     anchor = payload.get("anchor_value")
     anchor_value = float(anchor) if anchor is not None else None
+    if market_price is not None and market_price[1]:
+        priced_on, priced_at = market_price[0], float(market_price[1])
+        # Measured between the two figures as printed, both in the reader's currency, so the
+        # percentage is the one a reader gets with a calculator.
+        shown_forecast = convert(float(forecast)) if forecast is not None else None
+        if shown_forecast is None and forecast is not None:
+            shown_forecast = float(forecast)
+        return BannerContent(
+            title=title or str(payload.get("label") or "").strip(),
+            as_at=_pretty(as_at),
+            today=(show_today or show)(float(today)) if today is not None else "-",
+            forecast=show(float(forecast)) if forecast is not None else "-",
+            month=_month_name(point.get("period")) if point else "-",
+            previous=(show_today or show)(priced_at),
+            previous_month=_month_name(priced_on),
+            previous_value=priced_at,
+            previous_day=_pretty(priced_on),
+            move=((shown_forecast / priced_at - 1.0) * 100.0
+                  if shown_forecast is not None else None),
+            rows=tuple(rows),
+            forecast_value=convert(float(forecast)) if forecast is not None else None,
+            currency=currency,
+            trials=trials_for(point) if point else None,
+        )
     return BannerContent(
         title=title or str(payload.get("label") or "").strip(),
         as_at=_pretty(as_at),
@@ -598,6 +640,13 @@ def banner_content(payload: dict, points: list[dict], *, show,
         currency=currency,
         trials=trials_for(point) if point else None,
     )
+
+
+def reference_label(content: BannerContent) -> str:
+    """What the figure beside the forecast is called: the market price and its day, or the month."""
+    if content.previous_day:
+        return f"Market price · {content.previous_day}"
+    return f"Last published · {content.previous_month}"
 
 
 def banner_html(content: BannerContent) -> str:
@@ -656,8 +705,12 @@ def banner_html(content: BannerContent) -> str:
         # What is here instead is the bucket the model forecast FROM - same basis, so the comparison
         # holds. Without it the banner had no reference at all, and a forecast you cannot read
         # against anything cannot show a direction, which is the part a buyer acts on.
+        #
+        # And since 24 November 2026, where the market has a current price, the reference IS that
+        # price - the figure and the day Current Market prints - because a reader holds the two
+        # pages side by side and a median he can find nowhere else is not a reference to him.
         + (f'<div class="figure">'
-           f'<div class="label">Last published · {esc(content.previous_month)}</div>'
+           f'<div class="label">{esc(reference_label(content))}</div>'
            f'<div class="value">{esc(content.previous)}</div></div>'
            if content.previous_value is not None else "")
         + f'<div class="figure"><div class="label">{esc(content.month)}</div>'

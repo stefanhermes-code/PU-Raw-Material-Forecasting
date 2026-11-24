@@ -336,7 +336,11 @@ class MarketDataEngineClient:
         keys = [str(key) for key in identity_keys if str(key or "")]
         if not keys:
             return []
-        asked: dict[str, Any] = {"compact": 1, "identity_keys": ",".join(keys)}
+        # Net of tax, always. These are the readings a customer's chart and card are drawn from,
+        # and every other figure a customer sees - the consolidated value, the forecast built on it
+        # - has China's 13% VAT out of it. Asked as printed, Current Market read USD 1,597 where
+        # the Forecast page read 1,405 for the same market on the same day (24 November 2026).
+        asked: dict[str, Any] = {"compact": 1, "identity_keys": ",".join(keys), "net_of_tax": 1}
         if currency:
             asked["currency"] = currency
         rows = self._get("/observations", params=asked, timeout=self.data_timeout) or []

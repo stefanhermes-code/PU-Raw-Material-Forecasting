@@ -89,8 +89,10 @@ def _blocks(content, *, today: date | None = None) -> list[tuple]:
                      "here is technical and you do not need a background in statistics to use it."))
 
     out.append(("h1", "What you are looking at"))
-    out.append(("p", f"The last published price, our forecast for {month}, the change between them, "
-                     "and how much room to leave around it."))
+    out.append(("p", (f"The market price, our forecast for {month}, the change between them, "
+                      if getattr(content, "previous_day", "") else
+                      f"The last published price, our forecast for {month}, the change between them, ")
+                     + "and how much room to leave around it."))
     out.append(("lead", f"{month}: {units.without_unit(content.forecast)} per {units.MT}"))
     out.append(("table", content))
 
@@ -106,14 +108,27 @@ def _blocks(content, *, today: date | None = None) -> list[tuple]:
     if content.move is not None and content.previous_value is not None:
         way = "above" if content.move >= 0 else "below"
         out.append(("h1", "The direction"))
-        out.append(("p", f"The forecast is {abs(content.move):.1f}% {way} the last published price "
-                         f"of {_money(currency, content.previous_value)} for "
-                         f"{content.previous_month}. That change is the part most buyers act on: it "
-                         "says which way the market is heading between the price you can see and "
-                         "the month you are buying for."))
+        priced_on = getattr(content, "previous_day", "")
+        if priced_on:
+            # The reference is the market price, the same figure Current Market shows.
+            out.append(("p", f"The forecast is {abs(content.move):.1f}% {way} the market price "
+                             f"of {_money(currency, content.previous_value)} on {priced_on}, which "
+                             "is the figure Current Market shows for this market. That change is "
+                             "the part most buyers act on: it says which way the market is "
+                             "heading between the price you can see and the month you are buying "
+                             "for."))
+            out.append(("p", f"The forecast is for the typical price across {month}, and the "
+                             "market price is one day. After a sharp move inside a month the two "
+                             "can sit further apart than the market is likely to travel."))
+        else:
+            out.append(("p", f"The forecast is {abs(content.move):.1f}% {way} the last published price "
+                             f"of {_money(currency, content.previous_value)} for "
+                             f"{content.previous_month}. That change is the part most buyers act on: it "
+                             "says which way the market is heading between the price you can see and "
+                             "the month you are buying for."))
         # Only where there is a gap worth naming. On a market that publishes on time the forecast
         # starts from last month and saying so would be noise.
-        gap = content.gap_months
+        gap = None if priced_on else content.gap_months
         if gap and gap > 1:
             out.append(("p", f"It reaches {_count(gap)} months past the last published price, "
                              f"because that is the gap you have to cover: the newest price for this "

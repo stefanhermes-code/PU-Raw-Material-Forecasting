@@ -48,8 +48,13 @@ _WARMUP: dict[str, object] = {"running": False, "prepared": 0, "failed": 0, "tot
 _WARMUP_LOCK = threading.Lock()
 
 
-def _priced(price, identity, wanted: str, stored) -> dict:
+def _priced(price, identity, wanted: str, stored, share: float = 1.0) -> dict:
     """What a reading costs, in the currency the reader asked for.
+
+    `share` is what is left of the print once tax is taken out: 1.0 for a reading asked for as
+    printed, and 1 / 1.13 for a Chinese domestic assessment asked for net. It multiplies every
+    figure here, the converted ones as well - a conversion is a multiplication, so taking the tax
+    out before or after it is the same number. See `observations`, `net_of_tax`.
 
     Asked for nothing, or asked for the currency the market is assessed in: the reading as stored.
     Asked for another: the value written when the datapoint was created, with the rate and the day
@@ -57,19 +62,48 @@ def _priced(price, identity, wanted: str, stored) -> dict:
     convert into: a null price and `fx_unconverted`, never the number it is assessed in. A reading
     the page cannot honestly show is one the page does not draw.
     """
+    def net(value):
+        return value if value is None or share == 1.0 else float(value) * share
+
     assessed_in = (identity.currency or "").upper()
     if not wanted or wanted == assessed_in:
-        return {"price": price.price, "price_low": price.price_low, "price_high": price.price_high,
+        return {"price": net(price.price), "price_low": net(price.price_low),
+                "price_high": net(price.price_high),
                 "currency": identity.currency, "source_currency": identity.currency,
-                "source_price": price.price}
+                "source_price": net(price.price)}
     if stored is None:
         return {"price": None, "price_low": None, "price_high": None,
                 "currency": wanted, "source_currency": identity.currency,
-                "source_price": price.price, "fx_unconverted": True}
-    return {"price": stored.price, "price_low": stored.price_low, "price_high": stored.price_high,
+                "source_price": net(price.price), "fx_unconverted": True}
+    return {"price": net(stored.price), "price_low": net(stored.price_low),
+            "price_high": net(stored.price_high),
             "currency": wanted, "source_currency": identity.currency,
-            "source_price": price.price, "fx_rate": stored.fx_rate,
+            "source_price": net(price.price), "fx_rate": stored.fx_rate,
             "fx_rate_date": stored.fx_rate_date.isoformat() if stored.fx_rate_date else None}
+
+
+def _share_after_tax(session):
+    """For one request: what is left of each print once China's VAT is out of it, or 1.0.
+
+    The test is `app.domain.tax.carries_chinese_vat`, asked with the same six facts
+    `reference.series.net_price` asks it with, so a reading is net on a chart exactly when it is
+    net in the consolidated value beside it. The rights register is read once per request.
+    """
+    from app.domain.tax import CHINA_VAT_RATE, carries_chinese_vat
+    from app.reference.series import _rights_by_source
+
+    rights = _rights_by_source(session)
+
+    def share(price, identity) -> float:
+        taxed = carries_chinese_vat(currency=identity.currency,
+                                    market_geography=identity.market_geography,
+                                    commercial_basis=identity.commercial_basis,
+                                    rights_class=rights.get(price.source_id),
+                                    source_id=price.source_id,
+                                    price_kind=identity.observation_type)
+        return 1.0 / (1.0 + CHINA_VAT_RATE) if taxed else 1.0
+
+    return share
 
 
 # What a `source_registry` row that the code registry does not know about is, once it is settled
@@ -579,8 +613,29 @@ def create_app(database_url: str | None = None, raw_root=None) -> FastAPI:
 
     @application.get("/observations")
     def observations(currency: str = "", compact: bool = False, lean: bool = False,
-                     identity_keys: str = ""):
+                     identity_keys: str = "", net_of_tax: bool = False):
         """Every reading. With `currency`, each one already in it.
+
+        `net_of_tax` IS THE BASIS THE CUSTOMER PAGES ARE ON
+        ---------------------------------------------------
+        A reading is stored as the publisher printed it, and a Chinese domestic assessment is
+        printed with the 13% VAT inside. The consolidated series takes it out, the forecast is
+        built on the consolidated series, and so every figure on the Forecast page is net.
+
+        Current Market draws from THIS endpoint, and it drew the prints as printed. Stefan,
+        24 November 2026, with both pages open on Polyether Polyol China EXW: USD 1,597 on Current
+        Market, priced 23 November, and USD 1,405 on the Forecast chart for the same day. The two
+        publishers had printed 10,600 and 10,725 yuan; 1,597 is their mean with the tax in, and
+        1,405 is one of them with the tax out. *"A customer would expect this to be the same
+        number."* The same 13% was found and fixed on 17 September 2026 - see
+        `current_market.state_from_governed_series` - and came back when the chart moved to
+        drawing the readings themselves, because the rule lived in the consolidation and this
+        endpoint never asked it.
+
+        So a caller that draws a customer's chart says `net_of_tax=1` and gets each reading on the
+        basis the consolidation would have put it on: the SAME test, `domain.tax`'s, asked with
+        the same facts `reference.series.net_price` asks it with, not a second copy of it. Without
+        the argument the answer is the print, which is what an evidence screen wants.
 
         The conversion is not done here - it was done when the datapoint was created and is read
         back from the store (Stefan, 27 September 2026). A reading with no value in the asked-for
@@ -652,27 +707,48 @@ def create_app(database_url: str | None = None, raw_root=None) -> FastAPI:
         wants; no rule about what belongs to a market moves into the engine.
         """
         wanted = (currency or "").strip().upper()
+        wanted_keys = {part.strip() for part in identity_keys.split(",") if part.strip()}
         with session_factory() as session:
             identities = {row.id: row for row in session.scalars(select(MarketIdentityModel))}
+            # NAMED MARKETS ARE NARROWED IN THE STORE, NOT AFTERWARDS
+            #
+            # `identity_keys` used to be applied to the answer: every reading and every converted
+            # price was read from the store - some 40,000 rows of each - and all but one market's
+            # thrown away here. That is the whole table over the wire for every chart a customer
+            # opens, against an egress allowance of 275 GB a month shared by eight projects. Found
+            # on 24 November 2026 while adding `net_of_tax`, with a deployment now live.
+            #
+            # The keys are resolved to identity ids from the 339 identities already in hand, and
+            # both queries ask for those ids. The rows that come back are the rows the filter
+            # below would have kept, so the answer is unchanged.
+            named = ([row.id for row in identities.values() if _identity_key(row) in wanted_keys]
+                     if wanted_keys else None)
+            reading = select(PriceObservationModel.id, PriceObservationModel.source_id,
+                             PriceObservationModel.evidence_id, PriceObservationModel.identity_id,
+                             PriceObservationModel.price, PriceObservationModel.price_low,
+                             PriceObservationModel.price_high,
+                             PriceObservationModel.observation_date,
+                             PriceObservationModel.publication_date,
+                             PriceObservationModel.available_from, PriceObservationModel.weight)
+            if named is not None:
+                reading = reading.where(PriceObservationModel.identity_id.in_(named))
             rows = session.execute(
-                select(PriceObservationModel.id, PriceObservationModel.source_id,
-                       PriceObservationModel.evidence_id, PriceObservationModel.identity_id,
-                       PriceObservationModel.price, PriceObservationModel.price_low,
-                       PriceObservationModel.price_high, PriceObservationModel.observation_date,
-                       PriceObservationModel.publication_date,
-                       PriceObservationModel.available_from, PriceObservationModel.weight)
-                .order_by(PriceObservationModel.available_from, PriceObservationModel.id)
+                reading.order_by(PriceObservationModel.available_from, PriceObservationModel.id)
             ).all()
             in_currency = {}
-            if wanted:
-                in_currency = {
-                    row.observation_id: row for row in session.execute(
-                        select(PriceInCurrencyModel.observation_id, PriceInCurrencyModel.price,
-                               PriceInCurrencyModel.price_low, PriceInCurrencyModel.price_high,
-                               PriceInCurrencyModel.fx_rate, PriceInCurrencyModel.fx_rate_date)
-                        .where(PriceInCurrencyModel.currency == wanted)).all()
-                }
-            wanted_keys = {part.strip() for part in identity_keys.split(",") if part.strip()}
+            # `lean` reads no price as a value, so it needs none converted.
+            if wanted and not lean:
+                converted = select(
+                    PriceInCurrencyModel.observation_id, PriceInCurrencyModel.price,
+                    PriceInCurrencyModel.price_low, PriceInCurrencyModel.price_high,
+                    PriceInCurrencyModel.fx_rate, PriceInCurrencyModel.fx_rate_date
+                ).where(PriceInCurrencyModel.currency == wanted)
+                if named is not None:
+                    converted = converted.where(PriceInCurrencyModel.observation_id.in_(
+                        select(PriceObservationModel.id)
+                        .where(PriceObservationModel.identity_id.in_(named))))
+                in_currency = {row.observation_id: row for row in session.execute(converted).all()}
+            share_of = _share_after_tax(session) if net_of_tax else (lambda _price, _identity: 1.0)
             if lean:
                 # One entry per market, each reading a 4-tuple:
                 #   [observation_date, publication_date, source_id, 1 if it has a price else 0]
@@ -700,7 +776,8 @@ def create_app(database_url: str | None = None, raw_root=None) -> FastAPI:
                         "observation_id": price.id,
                         "source_id": price.source_id,
                         "identity_id": price.identity_id,
-                        **_priced(price, identity, wanted, in_currency.get(price.id)),
+                        **_priced(price, identity, wanted, in_currency.get(price.id),
+                              share_of(price, identity)),
                         "observation_date": price.observation_date,
                         "publication_date": price.publication_date,
                         "available_from": price.available_from,
@@ -731,7 +808,8 @@ def create_app(database_url: str | None = None, raw_root=None) -> FastAPI:
                     # Without this every consumer defaults to "market_price", which would let HTC's
                     # own purchase history be read as a published assessment.
                     "observation_type": identity.observation_type,
-                    **_priced(price, identity, wanted, in_currency.get(price.id)),
+                    **_priced(price, identity, wanted, in_currency.get(price.id),
+                              share_of(price, identity)),
                     "observation_date": price.observation_date,
                     "publication_date": price.publication_date,
                     "available_from": price.available_from,

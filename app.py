@@ -1468,7 +1468,8 @@ def _load_forecast(identity_key: str, horizons: tuple[int, ...]) -> dict:
 
 
 def render_forecast_banner(payload: dict, horizons: list[int], *, title: str,
-                           today: float | None, as_at) -> None:
+                           today: float | None, as_at,
+                           market_price: tuple[str, float] | None = None) -> None:
     """One banner for the market: today's price, the forecast, and a row per month.
 
     This replaced three cards and the evidence panel. The three cards repeated one number, because
@@ -1521,7 +1522,11 @@ def render_forecast_banner(payload: dict, horizons: list[int], *, title: str,
     content = forecast_cards.banner_content(
         payload, points, show=_show, show_today=_show_converted,
         today=today, as_at=as_at, title=title,
-        amount=lambda value: _amount(value)[0], currency=shown_currency)
+        amount=lambda value: _amount(value)[0], currency=shown_currency,
+        # The figure Current Market prints, already in the reader's currency. Only where the
+        # banner is in that currency too: a market the table cannot convert is shown in the
+        # currency it is assessed in, and a reference in another one is no reference.
+        market_price=market_price if shown_currency == target else None)
     st.markdown(forecast_cards.banner_html(content), unsafe_allow_html=True)
     # The banner carries four kinds of number and every one of them has been asked about: what the
     # range is, what a percentage next to a month means, whether the forecast is a promise. The
@@ -1647,9 +1652,32 @@ def _unbroken_runs(history):
     return [run for run in runs if run]
 
 
+def _ending_on_the_market_price(history: list, market_price: tuple[str, float] | None) -> list:
+    """The drawn history, ending on the price Current Market shows where there is one.
+
+    The history is the consolidated series, and its newest day can sit one publisher behind the
+    prints: on 23 November 2026 Polyether Polyol China was consolidated at 11:18 UTC from the one
+    print that had landed, the second landed after it, and until the next evening's run the chart
+    ended on a figure the Current Market card - which reads the prints - did not show. Same day,
+    two numbers, 0.6% apart with the tax out and 13.7% with it in.
+
+    So the last point is the card's. On the card's own day it replaces what was there; a day past
+    the end of the history it is added. A market price OLDER than the history's newest day changes
+    nothing: the history is ahead of it, and moving its end backwards would delete readings.
+    """
+    if not history or market_price is None or not market_price[1]:
+        return history
+    day, value = pd.to_datetime(market_price[0]), float(market_price[1])
+    if day < history[-1][0]:
+        return history
+    kept = history[:-1] if day == history[-1][0] else list(history)
+    return kept + [(day, value)]
+
+
 def _build_forecast_figure(payload: dict, horizon: int, currency: str, target: str,
                            table, transactions: list[dict] | None = None,
-                           history_lines: list[dict] | None = None) -> go.Figure:
+                           history_lines: list[dict] | None = None,
+                           market_price: tuple[str, float] | None = None) -> go.Figure:
     """Price history, the forecast path, and the range around it.
 
     The band is what this chart is for. A single dashed line invites a reader to treat one number as
@@ -1672,6 +1700,7 @@ def _build_forecast_figure(payload: dict, horizon: int, currency: str, target: s
     # The chart draws what we hold; the cards still come from the buckets.
     drawn = payload.get("readings") or payload.get("history") or []
     history = [(pd.to_datetime(day), _convert(value)) for day, value in drawn]
+    history = _ending_on_the_market_price(history, market_price)
     model = next((m for m in (payload.get("models") or ())
                   if m.get("model") == _card_model(payload) and m.get("status") == "ok"), None)
     # No forecast line on a market the banner calls an indication (Stefan, 22 September 2026): the
@@ -1734,6 +1763,11 @@ def _build_forecast_figure(payload: dict, horizon: int, currency: str, target: s
     printed_on = pd.to_datetime(latest["date"]) if latest.get("date") else None
     if printed_on is not None and printed_on >= anchor_day and latest.get("value") is not None:
         anchor_day, anchor_value = printed_on, _convert(float(latest["value"]))
+    # And where Current Market shows a price for this market, that is where the reader is standing:
+    # the history above already ends on it, and the forecast is drawn from it.
+    if market_price is not None and market_price[1] and (
+            pd.to_datetime(market_price[0]) >= anchor_day):
+        anchor_day, anchor_value = history[-1]
     # The points the page draws, from the one place that decides them: the chart, the CSV and the
     # report under it all ask `_points_the_page_draws`.
     points = _points_the_page_draws(payload, model, horizon)
@@ -1893,7 +1927,8 @@ def _report_series(frame, currency: str):
     return history, ahead
 
 
-def forecast_export_frame(payload: dict, currency: str, target: str, table) -> pd.DataFrame:
+def forecast_export_frame(payload: dict, currency: str, target: str, table,
+                          market_price: tuple[str, float] | None = None) -> pd.DataFrame:
     """The chart's own numbers as a table, in the currency on screen.
 
     One function, because the delivery section hands the customer the same figures. Two versions of
@@ -1910,9 +1945,14 @@ def forecast_export_frame(payload: dict, currency: str, target: str, table) -> p
     price = f"Price {units.pair(target)}"
     market = market_columns_from_key(payload.get("identity_key") or "")
     rows: list[dict] = []
-    for day, value in (payload.get("readings") or payload.get("history") or []):
-        rows.append({"Date": str(day), "Series": "Observed",
-                     price: round(_convert(value), 2), "Low": "", "High": ""})
+    # Ending on the market price, as the chart does - `_ending_on_the_market_price`.
+    observed = _ending_on_the_market_price(
+        [(pd.to_datetime(day), _convert(value))
+         for day, value in (payload.get("readings") or payload.get("history") or [])],
+        market_price)
+    for day, value in observed:
+        rows.append({"Date": day.strftime("%Y-%m-%d"), "Series": "Observed",
+                     price: round(value, 2), "Low": "", "High": ""})
     model = next((m for m in (payload.get("models") or ())
                   if m.get("model") == _card_model(payload) and m.get("status") == "ok"), None)
     if not _forecast_history_enough(payload):
@@ -2342,25 +2382,7 @@ def _render_market_page(runtime_access: RuntimeAccess | None = None, *,
     # `identities_of` is `market_lines`' own rule for which identities make up this market - East
     # China sits inside China, a merged term is one market - so the readings asked for and the
     # readings drawn can never be decided differently.
-    drawn = market_lines_module.identities_of(identities, chemical=chemical, geography=geography)
-    readings = _market_readings(tuple(sorted(drawn)), display_currency(), _snapshot_stamp())
-    # Current Market draws one year; Historic Pricing draws the whole record (Stefan, 3 November
-    # 2026: "everything older then 1 year is history"). The two pages share this function, so the
-    # cut is made once, here, on the readings the lines are built from - not on the axis range,
-    # which would leave twelve years in the figure for the slider to find and would not be the
-    # split he asked for.
-    if live:
-        readings = market_lines_module.drawn_on_current(readings)
-    lines = market_lines(identities, readings,
-                         snapshot.sources, chemical=chemical, geography=geography)
-    # A series Stefan set to No is not drawn either. The selectors already leave it out, but a
-    # region inside a country (East China under China) is drawn as a line of its own on the
-    # country's chart, and would otherwise come back that way (13 October 2026).
-    taken_off = customer_controls.hidden()
-    if taken_off:
-        lines = [line for line in lines
-                 if (str(chemical), line.region or str(geography), line.basis.upper(),
-                     line.packaging) not in taken_off]
+    lines = _lines_of_the_market(identities, snapshot.sources, chemical, geography, live=live)
     # A line is currently priced if it carries a reading inside the window that decides this page.
     # Whose reading it is decides the colour of the stroke and nothing else (3 November 2026).
     priced_now = [line for line in lines if market_lines_module.current_price(line)]
@@ -2420,12 +2442,8 @@ def _render_market_page(runtime_access: RuntimeAccess | None = None, *,
     # A market with nothing on these terms still gets a selector rather than an empty column, so
     # the row does not change shape as the reader moves through it.
     # Only packagings this page has a series for, so no choice ends on an empty chart.
-    packaging_options = tuple(customer_catalogue.packagings_offered(
-        drawable, chemical, geography, incoterm)) or packaging_choices(lines) or ("",)
-    preferred_packaging = next((line.packaging for line in priced_now
-                                if line.basis.upper() == str(incoterm).upper()),
-                               packaging_options[0])
-    packaging_options = _alphabetical(list(packaging_options), display_packaging)
+    packaging_options, preferred_packaging = _packaging_the_page_opens_on(
+        lines, drawable, chemical, geography, incoterm)
     _keep_choice("current_market_packaging", packaging_options, preferred_packaging)
     with s_packaging:
         packaging = st.selectbox(
@@ -2458,10 +2476,9 @@ def _render_market_page(runtime_access: RuntimeAccess | None = None, *,
     # (Stefan, 26 September 2026). What has changed, on his instruction of 20 November 2026, is
     # that the age answers that now and the source does not. A licensed assessment published four
     # weeks ago is this market's price today, and it was already what put the market on this page.
-    headline_line = max(priced_now, key=lambda line: (line.last_day, len(line.points)),
-                        default=None)
-    headline = (market_lines_module.current_price(headline_line)
-                if headline_line is not None else None)
+    # Asked of `market_lines.headline_price`, which the Forecast page asks too (24 November 2026):
+    # one rule for the figure, so the two pages cannot print different ones for one market.
+    headline = market_lines_module.headline_price(lines, incoterm, packaging)
     currency = display_currency()
 
     # No Incoterm on the card: it is in the selector directly above (Stefan, 22 September 2026).
@@ -2945,6 +2962,63 @@ def _still_priced(newest_day: str) -> bool:
     return year.isdigit() and int(year) >= FORECAST_FROM_YEAR
 
 
+def _lines_of_the_market(identities: list[dict], sources, chemical: str, geography: str,
+                         *, live: bool) -> list:
+    """Every line a market draws, from its own readings, with Stefan's Yes and No applied.
+
+    One function for the page that draws them and the page that only needs the price at the end of
+    one of them. `live` is Current Market's one-year window; Historic Pricing draws the record.
+    """
+    drawn = market_lines_module.identities_of(identities, chemical=chemical, geography=geography)
+    readings = _market_readings(tuple(sorted(drawn)), display_currency(), _snapshot_stamp())
+    # Current Market draws one year; Historic Pricing draws the whole record (Stefan, 3 November
+    # 2026: "everything older then 1 year is history"). The two pages share this function, so the
+    # cut is made once, here, on the readings the lines are built from - not on the axis range,
+    # which would leave twelve years in the figure for the slider to find and would not be the
+    # split he asked for.
+    if live:
+        readings = market_lines_module.drawn_on_current(readings)
+    lines = market_lines(identities, readings, sources, chemical=chemical, geography=geography)
+    # A series Stefan set to No is not drawn either. The selectors already leave it out, but a
+    # region inside a country (East China under China) is drawn as a line of its own on the
+    # country's chart, and would otherwise come back that way (13 October 2026).
+    taken_off = customer_controls.hidden()
+    if taken_off:
+        lines = [line for line in lines
+                 if (str(chemical), line.region or str(geography), line.basis.upper(),
+                     line.packaging) not in taken_off]
+    return lines
+
+
+def _packaging_the_page_opens_on(lines, catalogue, chemical: str, geography: str,
+                                 incoterm: str) -> tuple[list[str], str]:
+    """The packagings offered for these terms, and the one the selector lands on unprompted.
+
+    `lines` are the lines on these terms. Only packagings the page has a series for, so no choice
+    ends on an empty chart; and the one it opens on is the first that is priced now.
+    """
+    offered = tuple(customer_catalogue.packagings_offered(
+        catalogue, chemical, geography, incoterm)) or packaging_choices(lines) or ("",)
+    preferred = market_lines_module.opening_packaging(lines, incoterm, offered)
+    options = _alphabetical(list(offered), display_packaging)
+    return options, (preferred if preferred in options else options[0])
+
+
+def _current_market_price(identities: list[dict], sources, catalogue, chemical: str,
+                          geography: str, incoterm: str) -> tuple[str, float] | None:
+    """The day and the figure Current Market prints for this market as it opens, or nothing.
+
+    Not a second rule: the same lines, the same packaging and `market_lines.headline_price`, which
+    is what the card itself calls. The readings are the ones Current Market already holds for this
+    market, kept between runs, so asking costs nothing a reader of both pages has not paid.
+    """
+    lines = lines_on(_lines_of_the_market(identities, sources, chemical, geography, live=True),
+                     incoterm)
+    _options, packaging = _packaging_the_page_opens_on(lines, catalogue, chemical, geography,
+                                                       incoterm)
+    return market_lines_module.headline_price(lines, incoterm, packaging)
+
+
 def forecast_identity_keys(identities: list[dict], observations: list[dict],
                            chemical: str, geography: str, incoterm: str) -> tuple[str, ...]:
     """Every stored series that is the market the customer selected, the chosen one first.
@@ -3156,6 +3230,11 @@ def render_market_forecast(runtime_access: RuntimeAccess | None = None) -> None:
     if state.reference_value is None:
         st.info("The market price is building. It needs two independent comparable prices "
                 "within the current window.")
+    # The price Current Market shows for this market, on the day it shows it. The card, the
+    # percentage on it, the point the chart starts from, the CSV and the report all read this one
+    # figure (Stefan, 24 November 2026). None where the market has no current price.
+    market_price = _current_market_price(identities, snapshot.sources, priced_now,
+                                         chemical, origin, incoterm)
 
     forecast_payload: dict = {}
     forecast_horizons = [4, 8, 12]
@@ -3179,6 +3258,7 @@ def render_market_forecast(runtime_access: RuntimeAccess | None = None) -> None:
                                   geography_phrase(origin, incoterm)) if part),
             today=state.reference_value,
             as_at=state.latest_observation_date,
+            market_price=market_price,
         )
         # Said under the banner, where the reader has just seen the figure it is about. The card
         # carries a dated "Last print" line, so nothing here is contradicted - what was missing is
@@ -3254,7 +3334,8 @@ def render_market_forecast(runtime_access: RuntimeAccess | None = None) -> None:
         # that is one entitlement bug away from a leak, and the leak would be HTC's buying prices.
         figure = _build_forecast_figure(forecast_payload, chart_horizon,
                                         str(forecast_payload.get("currency") or ""),
-                                        display_currency(), _load_fx_table())
+                                        display_currency(), _load_fx_table(),
+                                        market_price=market_price)
         if figure.data:
             # Toolbar off. It appears on hover in the top right corner, exactly where the range
             # buttons sit, and covers them - and it is developer furniture on a customer page: zoom,
@@ -3268,7 +3349,11 @@ def render_market_forecast(runtime_access: RuntimeAccess | None = None) -> None:
                        "the less is known.")
             export = forecast_export_frame(
                 forecast_payload, str(forecast_payload.get("currency") or ""),
-                display_currency(), _load_fx_table())
+                display_currency(), _load_fx_table(), market_price=market_price)
+            # The report's "Today" is the market price where there is one, like the card above.
+            today_value, today_day = (
+                (market_price[1], market_price[0]) if market_price is not None
+                else (state.reference_value, state.latest_observation_date))
             left, right = st.columns([1, 1])
             with left:
                 st.download_button(
@@ -3285,9 +3370,9 @@ def render_market_forecast(runtime_access: RuntimeAccess | None = None) -> None:
                     "Download report (Word)",
                     data=page_reports.forecast_docx(
                         history, ahead, market=market, currency=display_currency(),
-                        today_price=(units.with_unit(f"{display_currency()} {state.reference_value:,.0f}")
-                                     if state.reference_value is not None else ""),
-                        priced=str(state.latest_observation_date or "")),
+                        today_price=(units.with_unit(f"{display_currency()} {today_value:,.0f}")
+                                     if today_value is not None else ""),
+                        priced=str(today_day or "")),
                     file_name=page_reports.file_name("Forecast", market),
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                     key="forecast_chart_report",
