@@ -20,6 +20,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date
+from math import sqrt
 from typing import Any, Iterable, Sequence
 
 from app.forecasting.adapters.base import ExecutionStatus
@@ -75,6 +76,9 @@ class MethodScore:
     rank: int | None = None
     statuses: dict[str, int] = field(default_factory=dict)
     note: str = ""
+    # The miss at each date every ranked method answered, in date order. Kept so two methods can be
+    # compared date by date (`within_the_noise`); not part of the stored row.
+    errors: tuple[float, ...] = field(default=(), repr=False, compare=False)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -84,6 +88,26 @@ class MethodScore:
             "coverage": self.coverage, "win_rate_vs_control": self.win_rate_vs_control,
             "statuses": dict(self.statuses), "note": self.note,
         }
+
+
+def within_the_noise(ahead: MethodScore, behind: MethodScore) -> tuple[float, float] | None:
+    """(how far behind, what chance alone gives) when the first is no more than the second - else None.
+
+    Two methods are marked on the same dates, so the fair comparison is date by date: how much
+    further off was the one behind, on each. The average of those gaps is the lead. Their spread
+    over the root of the count is how large a lead two equally good methods show by chance on this
+    many dates. A lead no larger than that has not been shown.
+
+    Polyether Polyol China EXW, 23 November 2026: one method took December's forecast from the
+    standard one on 716.91 against 717.27 yuan over 26 dates. That is a lead of 0.36.
+    """
+    count = len(ahead.errors)
+    if count < 2 or len(behind.errors) != count:
+        return None
+    gaps = [mine - theirs for theirs, mine in zip(ahead.errors, behind.errors)]
+    lead = sum(gaps) / count
+    noise = sqrt(sum((gap - lead) ** 2 for gap in gaps) / (count - 1) / count)
+    return (lead, noise) if lead <= noise else None
 
 
 def _scores(outcomes: Iterable[Outcome], control_key: str) -> dict[tuple[str, int], Score]:
@@ -147,6 +171,7 @@ def rank_methods(outcomes: Sequence[Outcome], horizons: Sequence[int], *, contro
                    if matured and score.origins / len(matured) >= min_answered_share}
         table = on_common_origins({(k, weeks): s for k, s in sitting.items()}, (weeks,)) if sitting else []
         by_method = {row["model"]: row for row in table}
+        common = sorted(set.intersection(*(set(score.trials) for score in sitting.values()))) if sitting else []
         ranked: list[MethodScore] = []
         for key, score in rows.items():
             counts = dict(status_counts.get((key, weeks), {}))
@@ -155,7 +180,8 @@ def rank_methods(outcomes: Sequence[Outcome], horizons: Sequence[int], *, contro
                 ranked.append(MethodScore(key, versions.get(key, ""), weeks, True, row["common_origins"], score.origins,
                                           mae=row["mae"], mape=row["mape"],
                                           directional_accuracy=row["directional_accuracy"], coverage=row["coverage"],
-                                          win_rate_vs_control=row["win_rate_vs_naive"], statuses=counts))
+                                          win_rate_vs_control=row["win_rate_vs_naive"], statuses=counts,
+                                          errors=tuple(score.trials[origin].abs_error for origin in common)))
             else:
                 ranked.append(MethodScore(key, versions.get(key, ""), weeks, False, 0, score.origins, statuses=counts,
                                           note=(f"answered {score.origins} of {len(matured)} matured origins; "

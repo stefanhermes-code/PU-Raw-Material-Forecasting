@@ -11,6 +11,11 @@ rejection). Whether the winner beat the flat control is reported too: a proposal
 "no change" is still the best eligible method, but the review should be able to see that it is not
 yet worth much.
 
+A LEAD HAS TO BE SHOWN (v1.2.119). The standard method (`STANDARD_METHOD_KEY`) keeps the place
+while the best-scoring method's lead over it is inside the noise of the test - see
+`scoring.within_the_noise`. Ranking alone gave a market's forecast to whichever method was ahead at
+the second decimal, and on 23 November 2026 that was 0.36 yuan on 26 dates.
+
 The registry is read through a plain mapping of method key to status so this module needs no
 session: the review passes what it loaded, a test passes a dict.
 """
@@ -21,8 +26,8 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 
 from app.domain.enums import ForecastMethodStatus, SelectionSource
-from app.forecasting.domain import FLAT_CONTROL_KEYS, ForecastMethodSelection
-from app.forecasting.scoring import MethodScore
+from app.forecasting.domain import FLAT_CONTROL_KEYS, STANDARD_METHOD_KEY, ForecastMethodSelection
+from app.forecasting.scoring import MethodScore, within_the_noise
 from app.forecasting.tournament import TournamentResult
 
 
@@ -38,6 +43,7 @@ class ProposedSelection:
     rank: int | None = None                # the winner's place in the FULL ranking, challengers included
     beats_flat_control: bool | None = None
     challenger_ahead: str = ""             # the best-ranked Challenger that out-scored the winner, if any
+    kept_ahead_of: str = ""                # the eligible method that scored better, by less than chance gives
     reason: str = ""
 
     def as_dict(self) -> dict[str, Any]:
@@ -71,7 +77,13 @@ def propose_for(identity_key: str, horizon_weeks: int, ranked: list[MethodScore]
     if not eligible:
         return ProposedSelection(identity_key, horizon_weeks, None,
                                  reason="no production-eligible method was ranked at this horizon")
-    winner = eligible[0]
+    best = eligible[0]
+    winner, held = best, None
+    standard = next((m for m in eligible if m.method_key == STANDARD_METHOD_KEY), None)
+    if standard is not None and standard is not best:
+        held = within_the_noise(best, standard)
+        if held is not None:
+            winner = standard
     control = next((m for m in ranked if m.method_key in FLAT_CONTROL_KEYS), None)
     beats = None
     if control is not None and control.mae is not None and winner.mae is not None:
@@ -82,9 +94,14 @@ def propose_for(identity_key: str, horizon_weeks: int, ranked: list[MethodScore]
                   and status_of.get(m.method_key) is ForecastMethodStatus.CHALLENGER), "")
     reason = (f"ranked {winner.rank} overall and first among production-eligible methods on "
               f"{winner.matched_dates} matched dates (MAE {winner.mae})")
+    if held is not None:
+        reason = (f"the standard method, ranked {winner.rank} overall on {winner.matched_dates} matched dates "
+                  f"(MAE {winner.mae}); {best.method_key} scored better (MAE {best.mae}) by {held[0]:.2f} a date, "
+                  f"where chance alone gives {held[1]:.2f} - a lead that has not been shown")
     if ahead:
         reason += f"; challenger {ahead} scored better and is reported for review"
     if beats is False:
         reason += "; does not beat the no-change control"
     return ProposedSelection(identity_key, horizon_weeks, winner.method_key, winner.method_version, winner.mae,
-                             winner.directional_accuracy, winner.matched_dates, winner.rank, beats, ahead, reason)
+                             winner.directional_accuracy, winner.matched_dates, winner.rank, beats, ahead,
+                             best.method_key if held is not None else "", reason)

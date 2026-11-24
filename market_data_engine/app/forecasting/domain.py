@@ -24,6 +24,9 @@ from app.domain.enums import ForecastMethodStatus, ReviewStatus, SelectionSource
 # The methods the engine runs today that are controls: they answer "what if the price simply does
 # not move", and a method that cannot lose to them is not a method. Never selectable.
 FLAT_CONTROL_KEYS: frozenset[str] = frozenset({"naive_last", "seasonal_naive"})
+# The method a market is forecast with unless another has shown it is better there. Shown, not
+# scored: `selection.propose_for` keeps it while the better score is inside the noise of the test.
+STANDARD_METHOD_KEY = "ets"
 
 UNIVERSAL = "UNIVERSAL"        # runs on the target series alone
 CONDITIONAL = "CONDITIONAL"    # needs related series, features or events; INELIGIBLE without them

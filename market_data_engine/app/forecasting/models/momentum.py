@@ -104,6 +104,29 @@ So it is registered as a candidate, it runs on every forecast, and every answer 
 to the vintage store beside the controls. In a few months the record answers the question on Chinese
 data, from forecasts that were actually made rather than refitted afterwards. The cards stay on ETS
 until it does.
+
+A REVERSAL IS FOUND AND NOT FORECAST (v1.2.119, 24 November 2026)
+------------------------------------------------------------------
+The fit can come out negative: the history says a move is taken back. Until this release the method
+forecast that, under a name that says "continued".
+
+Polyether Polyol China EXW, 24 November 2026. The price had fallen from 11,178 to 9,381 yuan in
+three weeks, on both publishers. The fit said -0.60 on 59 pairs, t -5.9, and the card said December
+10,205: up 8.8%. Fifty of those pairs are 2014 to 2023, one print a month - 7,910, 9,960, 9,960,
+13,300, 8,630 in the second half of 2016. One noisy print a month IS a move and its reversal: a
+reading that is off one month and right the next gives changes correlated at -0.5 by arithmetic.
+The carry measured the old record's noise, and it was applied to a fall measured on forty prints a
+month.
+
+Measured before deciding (`scripts/latest_price_vs_month/reversal.py`): 41 weekly series, every
+print day, 12,135 one-month forecasts. A reversal was fitted on 913 of them, and on those the
+method missed by 7.82% forecasting it and 7.63% handing back the last price. At two and three
+months, 11.50 against 11.52 and 13.84 against 13.74. Where the market is properly observed a fitted
+reversal buys nothing.
+
+So a negative carry counts as none. The answer is the last price, the fitted figure is kept beside
+it as `reversal_set_aside`, and the reading says so. A method that forecasts reversals would be a
+second method with its own name and its own record.
 """
 from __future__ import annotations
 
@@ -217,12 +240,13 @@ def shrunk_carry(carry: float, drivers, targets, steps: int) -> tuple[float, flo
 
 class Momentum:
     SPEC = ModelSpec(
-        key="momentum", family="AR", version="1.0",
+        key="momentum", family="AR", version="1.1",
         licence="none (arithmetic)", licence_class=LicenceClass.COMMERCIAL,
         display_name="Last month's move, continued",
         explanation="Measures from history how much of a month's move has typically carried into "
                     "the months after it, then applies that share to the most recent move. Where a "
-                    "market carries nothing forward, it hands back today's price.",
+                    "market carries nothing forward, or has taken its moves back, it hands back "
+                    "today's price.",
         supports_quantiles=True, is_control=False,
         note="Fits the next h months' change on last month's change, at each horizon, and shrinks "
              "the fitted carry by its own standard error so an unmeasurable carry collapses to "
@@ -264,6 +288,10 @@ class Momentum:
             beta, r_squared = fitted
             raw_carry = beta[0]
             carry, standard_error, t_ratio = shrunk_carry(raw_carry, drivers, targets, steps)
+            # Found, and not forecast: see "A REVERSAL IS FOUND AND NOT FORECAST" above.
+            reversal = carry if carry < 0 else None
+            if reversal is not None:
+                carry = 0.0
             # The carry already carries the horizon. `change_pairs` scales every target by `steps`
             # before the fit, so the coefficient maps a rate PER PERIOD onto the whole h-step move,
             # and the move is carry x rate with nothing further applied. Multiplying by `steps`
@@ -301,12 +329,17 @@ class Momentum:
                 # Said in words as well as a number, because a carry near zero means this model is
                 # handing back the control's answer and a reader is entitled to know that is what
                 # happened rather than inferring it from a coefficient.
-                "reading": ("the carry is not measurable in this history - the answer is the "
+                "reading": (f"this history takes {-reversal:.0%} of a move back the month after; "
+                            "this method forecasts moves that continue - the answer is the last price"
+                            if reversal is not None and reversal <= -0.05 else
+                            "the carry is not measurable in this history - the answer is the "
                             "last price"
                             if abs(carry) < 0.05 else
                             f"{carry:+.0%} of last month's move carried into the next "
                             f"{steps} month{'s' if steps != 1 else ''}"),
             }
+            if reversal is not None:
+                fits[str(weeks)]["reversal_set_aside"] = round(reversal, 3)
 
         metadata = {"latest_change": round(latest_rate * latest_span, 2),
                     "latest_rate_per_period": round(latest_rate, 2),
