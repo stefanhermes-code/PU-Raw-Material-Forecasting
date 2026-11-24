@@ -2248,6 +2248,7 @@ def _render_market_page(runtime_access: RuntimeAccess | None = None, *,
                         priced_recently_only: bool) -> None:
     live = priced_recently_only
     st.markdown("## Current Market Pricing" if live else "## Historic Pricing")
+    _say_when_the_engine_is_older()
 
     # The index, not every reading. Everything above the chart - which chemicals are offered, which
     # geographies, which terms, which market to open on, whether anything was collected recently -
@@ -2962,6 +2963,53 @@ def _still_priced(newest_day: str) -> bool:
     return year.isdigit() and int(year) >= FORECAST_FROM_YEAR
 
 
+@st.cache_data(ttl=60, max_entries=4, show_spinner=False)
+def _engine_release(page_release: str) -> str:
+    """The release the engine answering this page says it is. Empty when it cannot be asked.
+
+    Kept for a minute, and keyed on the page's own release so a page that has just been replaced
+    asks again at once rather than trusting what the page before it was told.
+    """
+    del page_release
+    try:
+        return MarketDataEngineClient(MARKET_DATA_ENGINE_URL, timeout=1.5).engine_version()
+    except MarketDataEngineUnavailable:
+        return ""
+
+
+def _engine_is_this_release() -> bool:
+    """Whether the page and the engine answering it are the same release.
+
+    A FEATURE THAT SPANS BOTH NEEDS BOTH
+    ------------------------------------
+    On the customer deployment the engine runs on a thread inside the page's own process. A
+    publish replaces the page's code in place; whether the engine thread takes up its own new code
+    without a reboot has never been demonstrated either way (masterplan, v1.2.112).
+
+    v1.2.113 is the first release where that matters to a number on the screen. The engine takes
+    China's VAT out of the readings and the Forecast page reads its reference price from those
+    readings. A v1.2.113 page on a v1.2.112 engine would ask for net, be answered with the print,
+    and set a price with the tax in it beside a forecast with the tax out: Polyether Polyol China
+    at 1,597 against 1,527, a fall of 4.4% that nothing forecast.
+
+    So the page asks. Where the two are not the same release it does not use what only the new
+    engine can give it, and the owner is told in one line what to do. Nothing is restarted from
+    here - a forced restart is what took the deployment down on 23 November.
+    """
+    return bool(VERSION) and _engine_release(VERSION) == VERSION
+
+
+def _say_when_the_engine_is_older() -> None:
+    """One line for the owner, on the pages it affects, when the engine has not caught up."""
+    if _signed_in_email() != PLATFORM_ADMIN_EMAIL or _engine_is_this_release():
+        return
+    answering = _engine_release(VERSION) or "not answering with a release"
+    st.caption(f"Owner only: these pages are v{VERSION} and the market-data engine inside the app "
+               f"is {('v' + answering) if answering[:1].isdigit() else answering}. Until the app "
+               "is rebooted (Manage app, then Reboot app) the prices here are as that engine "
+               "reads them, and the Forecast card keeps the month as its reference.")
+
+
 def _lines_of_the_market(identities: list[dict], sources, chemical: str, geography: str,
                          *, live: bool) -> list:
     """Every line a market draws, from its own readings, with Stefan's Yes and No applied.
@@ -3235,6 +3283,11 @@ def render_market_forecast(runtime_access: RuntimeAccess | None = None) -> None:
     # figure (Stefan, 24 November 2026). None where the market has no current price.
     market_price = _current_market_price(identities, snapshot.sources, priced_now,
                                          chemical, origin, incoterm)
+    # Only from an engine of this release: an older one answers with the tax still in the
+    # readings, and that figure does not belong beside a forecast with the tax out.
+    if not _engine_is_this_release():
+        market_price = None
+    _say_when_the_engine_is_older()
 
     forecast_payload: dict = {}
     forecast_horizons = [4, 8, 12]

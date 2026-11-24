@@ -326,6 +326,11 @@ class MarketDataEngineClient:
         found = self._get("/model-fit/accuracy", allow_not_found=True, timeout=self.data_timeout)
         return found if isinstance(found, dict) else {}
 
+    def engine_version(self) -> str:
+        """The release the engine answering is running, as it reports it. Empty when it does not."""
+        health = self._get("/health")
+        return str((health or {}).get("version") or "") if isinstance(health, dict) else ""
+
     def readings_for(self, identity_keys, *, currency: str | None = None) -> list[dict[str, Any]]:
         """The full readings of the named markets only - what a chart needs, and nothing else.
 

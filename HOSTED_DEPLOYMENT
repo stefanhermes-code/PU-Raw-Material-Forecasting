@@ -4,4 +4,4 @@ Its presence forces sign-in, entitlement enforcement, the in-process market-data
 housekeeping - see src/raw_material_forecasting/deployment_profile.py. Delete this file and the
 deployment would come up open, so it is written by the publish script and never by hand.
 
-Published from version 1.2.113.
+Published from version 1.2.114.
