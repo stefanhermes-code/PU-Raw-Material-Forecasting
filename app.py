@@ -174,15 +174,74 @@ WATCHLIST_PATH = Path("data/config/china_pmdi_watchlist.json")
 MARKET_DATA_ENGINE_URL = os.environ.get("MARKET_DATA_ENGINE_URL", "http://127.0.0.1:7861").strip()
 
 
-@st.cache_resource(show_spinner="Starting the market-data engine ...")
-def _embedded_market_data_engine() -> str:
-    """Start the engine inside this process and remember where it answers.
+def _as_on_disk(module):
+    """The module as its file has it now: imported again where the file changed since it was.
 
-    `st.cache_resource` is what makes this happen once. Streamlit re-runs this script top to
-    bottom on every click, and without the cache every interaction would start another engine
-    against the same store until the container ran out of memory.
+    Compared by the file's modification time, kept on the module itself, so it costs one `stat`
+    a run and imports nothing while nothing has changed. A file that will not import - a publish
+    caught half-written - leaves the module exactly as it was; the next run looks again.
+
+    Safe for `embedded_engine` because what it has started is kept on `sys`, not in the module.
+    It is not a general cure for a stale module and must not be pointed at one that keeps state.
     """
-    return embedded_engine.start()
+    import importlib
+
+    try:
+        on_disk = os.path.getmtime(module.__file__)
+    except (OSError, TypeError, AttributeError):
+        return module
+    if getattr(module, "_file_stamp", None) == on_disk:
+        return module
+    try:
+        module = importlib.reload(module)
+    except Exception:
+        logging.getLogger(__name__).warning("could not import %s again", module.__name__,
+                                            exc_info=True)
+        return module
+    module._file_stamp = on_disk
+    return module
+
+
+def _embedded_market_data_engine() -> str:
+    """The engine inside this process, of the release this page is, and where it answers.
+
+    Streamlit re-runs this script top to bottom on every click, so this is asked on every click
+    and has to cost nothing when nothing has changed: `embedded_engine` keeps the one engine it
+    started and hands back its address.
+
+    It was `st.cache_resource` that made it happen once, and that is what kept a v1.2.112 engine
+    answering v1.2.114 pages on 24 November 2026: the cache remembered an address, a publish
+    replaced the page, and nothing ever asked again. Now the page says which release it is, and
+    where the engine answering was started for another one `embedded_engine` builds a fresh one
+    from the files on disk and retires the old - see its module docstring for what keeps that
+    safe. The spinner is shown only when something is about to start.
+
+    THE RELEASE IS READ FROM DISK, AND THE HELPER IS NOT ASSUMED TO BE THE NEW ONE
+    ------------------------------------------------------------------------------
+    The first rehearsal of this, on a copy of the deployment, failed in a way worth keeping. The
+    new files were dropped over a running v1.2.114 and the next visit raised: the new page was
+    calling `embedded_engine.answering`, and the `embedded_engine` Python was holding was still
+    v1.2.114's, which has no such function. Streamlit always runs the new script; whether it has
+    imported the script's helper modules again by then is its business and a matter of timing.
+    At the top of this file that is every visitor on an error page.
+
+    So: the one helper this depends on is brought up to its file here (`_as_on_disk`), an older
+    one that could not be is still used the way it always was, and the release asked for is the
+    one on disk - not `VERSION`, which is a fact about a module import and can lag the files.
+    """
+    starter = _as_on_disk(embedded_engine)
+    release = version_on_disk()
+    if not hasattr(starter, "answering") or release in ("", "unknown"):
+        return starter.start()
+    if starter.answering(release):
+        return starter.start(release=release)
+    with st.spinner("Starting the market-data engine ..."):
+        url = starter.start(release=release)
+    # What the pages kept was the previous engine's answers. A release that changes what the
+    # engine says - v1.2.113 took China's VAT out of the readings - must not be read through
+    # fifteen minutes of the old one's.
+    st.cache_data.clear()
+    return url
 
 
 # Streamlit Community Cloud runs one command and gives no way to start a second process, so there
@@ -620,7 +679,7 @@ def render_brand_header() -> None:
           <div class="brand-center">
             <div class="title">PU Raw Material Forecasting</div>
             <div class="strap">Market intelligence for polyurethane raw-material decisions</div>
-            <div class="brand-version">v{VERSION}</div>
+            <div class="brand-version">v{VERSION}{_an_older_engine()}</div>
           </div>
           <div class="brand-right">
             <div class="copy">
@@ -2999,15 +3058,31 @@ def _engine_is_this_release() -> bool:
     return bool(VERSION) and _engine_release(VERSION) == VERSION
 
 
+def _an_older_engine() -> str:
+    """" · engine v1.2.112" beside the release in the header, and only while the two differ.
+
+    The one place it can be seen without signing in, which is where a publish is checked from.
+    Nothing is added when the two agree, or when the engine does not say what it is.
+    """
+    answering = "" if _engine_is_this_release() else _engine_release(VERSION)
+    return f" · engine v{answering}" if answering[:1].isdigit() else ""
+
+
 def _say_when_the_engine_is_older() -> None:
     """One line for the owner, on the pages it affects, when the engine has not caught up."""
     if _signed_in_email() != PLATFORM_ADMIN_EMAIL or _engine_is_this_release():
         return
     answering = _engine_release(VERSION) or "not answering with a release"
+    # Since v1.2.115 the page starts a fresh engine itself, so this line means that did not work,
+    # and it says why where the engine said.
+    asked_of = getattr(embedded_engine, "status", None)
+    refused = "; ".join(((asked_of() if asked_of else {}).get("refused") or {}).values())
     st.caption(f"Owner only: these pages are v{VERSION} and the market-data engine inside the app "
-               f"is {('v' + answering) if answering[:1].isdigit() else answering}. Until the app "
-               "is rebooted (Manage app, then Reboot app) the prices here are as that engine "
-               "reads them, and the Forecast card keeps the month as its reference.")
+               f"is {('v' + answering) if answering[:1].isdigit() else answering}. "
+               + (f"A fresh engine would not start ({refused}); it is tried again every three "
+                  "minutes. " if refused else "")
+               + "Until the app is rebooted (Manage app, then Reboot app) the prices here are as "
+               "that engine reads them, and the Forecast card keeps the month as its reference.")
 
 
 def _lines_of_the_market(identities: list[dict], sources, chemical: str, geography: str,
