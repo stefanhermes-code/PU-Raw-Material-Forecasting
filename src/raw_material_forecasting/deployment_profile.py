@@ -42,6 +42,21 @@ HOSTED_SWITCHES: dict[str, str] = {
 }
 
 
+# WHAT A CUSTOMER PAGE SHOWS FOLLOWS STEFAN'S MACHINE (v1.2.128, 25 November 2026).
+# Which markets a customer page shows is Stefan's choice, made on his machine and kept in a file
+# there (`customer_controls`). The deployment had no such file, so it showed every market,
+# including the 34 he had switched off. Stefan: "the live site should follow my machine." So the
+# publish script carries the file with each release, under this name beside the marker, and the
+# deployment is told to read it from there and nowhere else. No file, no choices: every market
+# shows, which is what a deployment did before.
+CONTROLS_NAME = "customer_page_controls.json"
+CONTROLS_SWITCH = "PUFORECAST_CONTROLS"
+
+
+def controls_path(root: Path) -> Path:
+    return Path(root) / CONTROLS_NAME
+
+
 def marker_path(root: Path) -> Path:
     return Path(root) / MARKER_NAME
 
@@ -60,5 +75,6 @@ def apply(root: Path, environ: dict[str, str] | None = None) -> dict[str, str]:
     target = os.environ if environ is None else environ
     if not is_hosted(root):
         return {}
-    target.update(HOSTED_SWITCHES)
-    return dict(HOSTED_SWITCHES)
+    applied = {**HOSTED_SWITCHES, CONTROLS_SWITCH: str(controls_path(root))}
+    target.update(applied)
+    return applied

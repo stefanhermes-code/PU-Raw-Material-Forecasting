@@ -1,0 +1,463 @@
+{
+ "choices": {
+  "ADIPIC_ACID|Europe|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:25:40+00:00",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "ADIPIC_ACID|North America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:25:40+00:00",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "ADIPIC_ACID|Northeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:25:40+00:00",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "ALIPHATIC_POLYESTER_POLYOL|East China|EXW|": {
+   "at": "2026-10-16T02:10:11+00:00",
+   "pages": {
+    "Historic Pricing": true
+   },
+   "evaluated": {
+    "Historic Pricing": false
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "BENZENE|Europe|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:26:15+00:00",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "BENZENE|Middle East|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:26:26+00:00",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "ALIPHATIC_POLYESTER_POLYOL|China|EXW|": {
+   "at": "2026-10-16T02:10:11+00:00",
+   "pages": {
+    "Historic Pricing": true
+   },
+   "evaluated": {
+    "Historic Pricing": false
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "BENZENE|India|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:26:58+00:00",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "BENZENE|North America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "BENZENE|Northeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "BENZENE|South America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "BENZENE|Southeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PMDI|Middle East|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PMDI|North America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PMDI|Northeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PO|Europe|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PO|North America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PO|Northeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "POLYETHER_POLYOL|North America|CIF|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": false,
+    "Historic Pricing": true,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PURE_MDI|Europe|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PURE_MDI|Middle East|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PURE_MDI|North America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "PURE_MDI|Northeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TDI|Germany|UNSPECIFIED|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": false,
+    "Historic Pricing": true,
+    "Forecast": false
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TDI|Japan|UNSPECIFIED|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": false,
+    "Historic Pricing": true,
+    "Forecast": false
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TDI|Middle East|CIF|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": false,
+    "Historic Pricing": true,
+    "Forecast": false
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TDI|Middle East|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TDI|North America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TDI|North America|UNSPECIFIED|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": false,
+    "Historic Pricing": true,
+    "Forecast": false
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TDI|Northeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TDI|South Korea|CFR|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TOLUENE|Europe|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TOLUENE|North America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TOLUENE|Northeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TOLUENE|South America|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "TOLUENE|Southeast Asia|REGIONAL_MARKET|": {
+   "show": false,
+   "at": "2026-10-13T08:32:21+00:00",
+   "reason": "fewer than 10 readings (Stefan, 13 October 2026)",
+   "evaluated": {
+    "Current Market": true,
+    "Historic Pricing": false,
+    "Forecast": true
+   },
+   "baselined": "2026-10-16T06:23:05+00:00"
+  },
+  "ALIPHATIC_POLYESTER_POLYOL|Europe|DAP|": {
+   "at": "2026-10-16T02:09:12+00:00",
+   "evaluated": {
+    "Current Market": false
+   },
+   "baselined": "2026-10-16T06:23:05+00:00",
+   "removed": {
+    "pages": {
+     "Current Market": true
+    },
+    "at": "2026-11-19",
+    "why": "Stefan, 19 November 2026: FNAG Switzerland will never collect again - this was only ever historic data. The forced Yes put a market on Current Market whose newest price is 1 January 2017 and whose only readings are HTC's own purchase deals, which the source registry says must never reach a customer-facing reference."
+   }
+  },
+  "ADIPIC_ACID|China|EXW|": {
+   "pages": {
+    "Historic Pricing": true
+   },
+   "evaluated": {
+    "Historic Pricing": false
+   },
+   "at": "2026-10-16T06:22:50+00:00"
+  },
+  "ETHYLENE_GLYCOL|Saudi Arabia|CIF|": {
+   "pages": {
+    "Historic Pricing": false
+   },
+   "evaluated": {
+    "Historic Pricing": true
+   },
+   "at": "2026-10-17T07:04:29+00:00",
+   "reason": "Six readings across 22 years - 386, 1,523, 6,755, 2,890, 628, 683 - a 17x internal spread around a material that trades at 657. Saudi Arabia is the largest MEG exporter in the world and does not import it; the FOB leg carries 136 readings at 507 and is the real series. Measured 17 October 2026."
+  },
+  "TEREPHTHALIC_ACID|South Korea|CIF|": {
+   "pages": {
+    "Historic Pricing": false
+   },
+   "evaluated": {
+    "Historic Pricing": true
+   },
+   "at": "2026-10-17T07:04:29+00:00",
+   "reason": "HS 291736 covers terephthalic acid AND its salts, and South Korea is a TPA producer that imports only small specialty volumes: 2006-2013 read 3,138-3,708 USD/t while 2000-2005, 2014 and 2016 read 578-1,055, all of them above the 1,000 t floor. The code is catching more than one product, which a quantity rule cannot fix. Measured 17 October 2026."
+  },
+  "PHTHALIC_ANHYDRIDE|Saudi Arabia|FOB|": {
+   "pages": {
+    "Historic Pricing": false
+   },
+   "evaluated": {
+    "Historic Pricing": true
+   },
+   "at": "2026-10-17T07:04:29+00:00",
+   "reason": "Two readings, 2004 and 2005, both exactly 187 USD/t against a material that trades at 1,007. Two declarations twenty years old are not a market. Measured 17 October 2026."
+  },
+  "POLYETHER_POLYOL|Europe|CIF|": {
+   "pages": {
+    "Current Market": true
+   },
+   "evaluated": {
+    "Current Market": false
+   },
+   "at": "2026-10-22T01:33:30+00:00"
+  },
+  "POLYETHER_POLYOL|Europe|DDP|": {
+   "pages": {
+    "Current Market": true
+   },
+   "evaluated": {
+    "Current Market": false
+   },
+   "at": "2026-10-22T01:34:25+00:00"
+  }
+ }
+}
