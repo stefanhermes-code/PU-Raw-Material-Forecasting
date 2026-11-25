@@ -1,0 +1,1078 @@
+[
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-04-25",
+    "state": "Disrupted",
+    "note": "",
+    "document": "PU Supply_Chain Geopolitical Update 2026-04-25.docx",
+    "exposures": []
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-04-26",
+    "state": "Disrupted",
+    "note": "",
+    "document": "PU SUPPLY CHAIN GEOPOLITICAL UPDATE.docx",
+    "exposures": []
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-04-29",
+    "state": "Disrupted",
+    "note": "",
+    "document": "PU_Supply_Chain_Geopolitical_Update_2026-04-29.docx",
+    "exposures": []
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-05-18",
+    "state": "Disrupted",
+    "note": "",
+    "document": "PU_Supply_Chain_Geopolitical_Update_2026-05-18.docx",
+    "exposures": []
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-05-25",
+    "state": "Disrupted",
+    "note": "",
+    "document": "PU_Supply_Chain_Geopolitical_Update_2026-05-25.docx",
+    "exposures": []
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-05-27",
+    "state": "Disrupted",
+    "note": "",
+    "document": "PU_Supply_Chain_Geopolitical_Update_2026-05-27.docx",
+    "exposures": []
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-05-29",
+    "state": "Disrupted",
+    "note": "",
+    "document": "PU_Supply_Chain_Geopolitical_Update_2026-05-29.docx",
+    "exposures": []
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-03",
+    "state": "Disrupted",
+    "note": "Traffic and energy signals have improved from the acute blockage phase, and commercial confidence has not followed.",
+    "document": "2026-07-03_Strait_of_Hormuz_PU_Supply_Chain_Special_Report.pdf",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene, aniline and phosgene chain exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO and EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL;PO"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-05",
+    "state": "Disrupted",
+    "note": "Tanker and energy-market conditions improved against the acute phase while route governance stayed unsettled.",
+    "document": "2026-07-05_Strait_of_Hormuz_PU_Supply_Chain_Special_Report.pdf",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene, aniline and phosgene chain exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO and EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL;PO"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-06",
+    "state": "Disrupted",
+    "note": "Physical flow is improving, and commercial reliability has not normalised.",
+    "document": "2026-07-06_Strait_of_Hormuz_PU_Supply_Chain_Special_Report.pdf",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene, aniline and phosgene chain exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO and EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL;PO"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-13",
+    "state": "Disrupted",
+    "note": "With renewed escalation pressure but no confirmed broad PU raw-material stoppage",
+    "document": "2026-07-13 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-15",
+    "state": "Disrupted",
+    "note": "With renewed escalation pressure and no confirmed broad PU raw-material stoppage",
+    "document": "2026-07-15 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-20",
+    "state": "Disrupted",
+    "note": "With renewed escalation pressure and no confirmed broad PU raw-material stoppage",
+    "document": "2026-07-20 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-22",
+    "state": "Disrupted",
+    "note": "With renewed escalation pressure and no confirmed broad PU raw-material stoppage",
+    "document": "2026-07-22 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-24",
+    "state": "Disrupted",
+    "note": "With renewed escalation pressure across Hormuz and the Red Sea",
+    "document": "2026-07-24 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-07-31",
+    "state": "Disrupted",
+    "note": "With renewed escalation and no shipment-level normalization proof",
+    "document": "2026-07-31 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy and logistics uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed than base grades.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / specialty systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification requirements.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants and additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitution and long qualification cycles.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging and logistics services",
+        "level": "Medium",
+        "mechanism": "Container availability, documentation, dangerous-goods handling, route exceptions and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-08-03",
+    "state": "Disrupted",
+    "note": "",
+    "document": "2026-08-03 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants, additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, fewer substitutes and long qualification cycles.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "Container availability, packaging components, documentation, dangerous-goods handling and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-08-10",
+    "state": "Disrupted",
+    "note": "With conditional diplomatic progress and renewed vessel-incident risk",
+    "document": "2026-08-10 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and supplier allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts, surfactants, additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, fewer substitutes and long qualification cycles.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "Container availability, packaging components, documentation, dangerous-goods handling and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-08-14",
+    "state": "Disrupted",
+    "note": "With improved energy flow but worsening incident evidence",
+    "document": "2026-08-14 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialties can be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, fewer substitutes and long qualification cycles.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "Container availability, packaging, documentation, dangerous-goods handling and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-08-19",
+    "state": "Disrupted",
+    "note": "Confirmed traffic fell and another ship strike caused a crew casualty",
+    "document": "2026-08-19 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain pressure, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene exposure, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialties can be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium",
+        "mechanism": "Aromatics, acids, glycols, freight and formulation qualification.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, fewer substitutes and long qualification cycles.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "Container availability, packaging, documentation, dangerous-goods handling and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-08-28",
+    "state": "Disrupted",
+    "note": "Traffic improved after 19 August, but two tanker attacks and unsettled route governance keep commercial reliability impaired",
+    "document": "2026-08-28 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene chain, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium",
+        "mechanism": "Acids, glycols, aromatics, freight and formulation qualification.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, fewer substitutes, long qualification cycles and dangerous-goods handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "Containers, ISO tanks, drums, documentation, port handling and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-09-02",
+    "state": "Disrupted",
+    "note": "Escalation bias: renewed vessel incidents and military action have interrupted the late-August recovery path",
+    "document": "2026-09-02 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene chain, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium",
+        "mechanism": "Acids, glycols, aromatics, freight and formulation qualification.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, fewer substitutes, long qualification cycles and dangerous-goods handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "Containers, ISO tanks, drums, documentation, port handling and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-09-21",
+    "state": "Disrupted",
+    "note": "Fragile transit recovery, wider corridor risk",
+    "document": "2026-09-21 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene chain, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium-high",
+        "mechanism": "Acids, glycols, aromatics, freight and qualification. European CASE polyester polyols rose EUR 150/t from 1 September.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, few substitutes, long qualification cycles and dangerous-goods handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "ISO tanks, drums, documentation, port handling, container access and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-09-30",
+    "state": "Disrupted",
+    "note": "Fragile transit recovery, wider corridor risk",
+    "document": "2026-09-30 Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene chain, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium-high",
+        "mechanism": "Acids, glycols, aromatics, freight and qualification. European CASE polyester polyols rose EUR 150/t from 1 September.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, few substitutes, long qualification cycles and dangerous-goods handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "ISO tanks, drums, documentation, port handling, container access and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-10-05",
+    "state": "Disrupted",
+    "note": "Renewed attacks have interrupted the fragile transit recovery",
+    "document": "2026-10-05 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene chain, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium-high",
+        "mechanism": "Acids, glycols, aromatics, freight and qualification; weak demand can limit pass-through.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, few substitutes, long qualification cycles and dangerous-goods handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "ISO tanks, drums, documentation, port handling, container access and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "2026-10-09 - Strait of Hormuz PU Supply Chain Special Report",
+    "reported": "2026-10-09",
+    "state": "Disrupted",
+    "note": "Attack persistence is now broader and more operationally consequential",
+    "document": "2026-10-09 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene chain, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades can be sharper.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium-high",
+        "mechanism": "Acids, glycols, aromatics, freight and qualification; weak demand limits pass-through.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, few substitutes, long qualification cycles and DG handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "ISO tanks, drums, documentation, port handling, feeder access and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-10-12",
+    "state": "Disrupted",
+    "note": "Near-daily attacks continue inside a functioning but commercially conditional corridor",
+    "document": "2026-10-12 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene chain, energy, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium-high",
+        "mechanism": "Acids, glycols, aromatics, freight and qualification; weak demand can limit pass-through.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, few substitutes, long qualification cycles and dangerous-goods handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "ISO tanks, drums, documentation, port handling, container access and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-10-19",
+    "state": "Disrupted",
+    "note": "Confirmed attacks and a vessel sinking have overtaken the earlier transit-recovery signal",
+    "document": "2026-10-19 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene chain, route uncertainty, flexible-foam sensitivity and limited recipe tolerance.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialty grades are less flexible.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, few substitutes, long qualification and DG handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "ISO tanks, drums, documentation, port handling and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-10-21",
+    "state": "Disrupted",
+    "note": "A functioning but commercially unreliable corridor",
+    "document": "2026-10-21 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain exposure, flexible-foam sensitivity, narrower formulation latitude and parcel timing.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline chain, regional grade availability, scheduled maintenance and freight.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols",
+        "level": "Medium",
+        "mechanism": "PO, energy, operating rates, specialty-grade qualification and lane reliability.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, limited substitutes and long qualification cycles.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / spares",
+        "level": "Medium-high",
+        "mechanism": "Container exposure, dangerous-goods handling, closure fit, pumps and maintenance lead time.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz Special Report",
+    "reported": "2026-10-30",
+    "state": "Disrupted",
+    "note": "The corridor remains active but commercially unreliable at shipment level",
+    "document": "2026-10-30 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain exposure, flexible-foam sensitivity, narrower formulation latitude and parcel timing.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialties may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium-high",
+        "mechanism": "Acids, glycols, aromatics, freight and qualification; weak demand can limit pass-through.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, few substitutes, long qualification cycles and dangerous-goods handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "ISO tanks, drums, documentation, port handling, container access and insurance.",
+        "chemicals": ""
+      }
+    ]
+  },
+  {
+    "event": "Strait of Hormuz Special Report",
+    "reported": "2026-11-16",
+    "state": "Disrupted",
+    "note": "Passage continues, but renewed tanker attacks and weak ETA integrity prevent normalization",
+    "document": "2026-11-16 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": [
+      {
+        "group": "TDI",
+        "level": "High",
+        "mechanism": "Toluene-chain exposure, two-plant European concentration, import delays, flexible-foam sensitivity, high Middle East replacement cost and parcel timing.",
+        "chemicals": "TDI"
+      },
+      {
+        "group": "MDI",
+        "level": "Medium-high",
+        "mechanism": "Benzene/aniline/phosgene chain, grade-specific availability, freight, regional operating rates and allocation discipline.",
+        "chemicals": "PMDI;PURE_MDI"
+      },
+      {
+        "group": "Polyether polyols / PO",
+        "level": "Medium",
+        "mechanism": "LPG, propylene, PO/EO, energy and route reliability; specialties may be more exposed.",
+        "chemicals": "POLYETHER_POLYOL"
+      },
+      {
+        "group": "Polyester polyols / systems",
+        "level": "Medium-high",
+        "mechanism": "Acids, glycols, aromatics, freight and qualification; weak demand can limit pass-through.",
+        "chemicals": "AROMATIC_POLYESTER_POLYOL;ALIPHATIC_POLYESTER_POLYOL"
+      },
+      {
+        "group": "Catalysts / surfactants / additives",
+        "level": "High",
+        "mechanism": "Small-volume bottlenecks, few substitutes, long qualification cycles and dangerous-goods handling.",
+        "chemicals": ""
+      },
+      {
+        "group": "Packaging / DG services",
+        "level": "Medium",
+        "mechanism": "ISO tanks, drums, documentation, port handling, container access and insurance.",
+        "chemicals": ""
+      }
+    ]
+  }
+]
