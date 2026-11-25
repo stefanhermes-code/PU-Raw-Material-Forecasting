@@ -71,14 +71,19 @@
    "baselined": "2026-10-16T06:23:05+00:00"
   },
   "BENZENE|India|REGIONAL_MARKET|": {
-   "show": false,
-   "at": "2026-10-13T08:26:58+00:00",
+   "at": "2026-11-25T06:53:10+00:00",
    "evaluated": {
     "Current Market": true,
     "Historic Pricing": false,
     "Forecast": true
    },
-   "baselined": "2026-10-16T06:23:05+00:00"
+   "baselined": "2026-10-16T06:23:05+00:00",
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
   },
   "BENZENE|North America|REGIONAL_MARKET|": {
    "show": false,
@@ -388,20 +393,6 @@
    },
    "baselined": "2026-10-16T06:23:05+00:00"
   },
-  "ALIPHATIC_POLYESTER_POLYOL|Europe|DAP|": {
-   "at": "2026-10-16T02:09:12+00:00",
-   "evaluated": {
-    "Current Market": false
-   },
-   "baselined": "2026-10-16T06:23:05+00:00",
-   "removed": {
-    "pages": {
-     "Current Market": true
-    },
-    "at": "2026-11-19",
-    "why": "Stefan, 19 November 2026: FNAG Switzerland will never collect again - this was only ever historic data. The forced Yes put a market on Current Market whose newest price is 1 January 2017 and whose only readings are HTC's own purchase deals, which the source registry says must never reach a customer-facing reference."
-   }
-  },
   "ADIPIC_ACID|China|EXW|": {
    "pages": {
     "Historic Pricing": true
@@ -458,6 +449,249 @@
     "Current Market": false
    },
    "at": "2026-10-22T01:34:25+00:00"
+  },
+  "ADIPIC_ACID|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "ADIPIC_ACID|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "BENZENE|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "BENZENE|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "DIETHYLENE_GLYCOL|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "DIETHYLENE_GLYCOL|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "DMT|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "DMT|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "EO|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "EO|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "ETHYLENE_GLYCOL|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "ETHYLENE_GLYCOL|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "MALEIC_ANHYDRIDE|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "MALEIC_ANHYDRIDE|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "PHTHALIC_ANHYDRIDE|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "PHTHALIC_ANHYDRIDE|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "PMDI|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "POLYETHER_POLYOL|India|CFR|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "POLYETHER_POLYOL|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "POLYETHER_POLYOL|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "PO|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "PO|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "TDI|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "TEREPHTHALIC_ACID|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "TEREPHTHALIC_ACID|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "TOLUENE|India|CIF|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
+  },
+  "TOLUENE|India|FOB|": {
+   "pages": {
+    "Current Market": false,
+    "Historic Pricing": false,
+    "Forecast": false
+   },
+   "at": "2026-11-25T06:53:10+00:00",
+   "reason": "India prices are not current market prices: customs averages and one generic figure. Stefan, 25 November 2026, before the Sheela Foam demo: 'Hide all India prices'."
   }
  }
 }
