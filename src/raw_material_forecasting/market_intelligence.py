@@ -77,7 +77,68 @@ def has_intelligence(chemical: str, geography: str, directory: Path = DATA_DIR) 
     exactly the state a roster-only check would have called empty.
     """
     return (has_register(chemical, geography, directory)
-            or (Path(directory) / developments_file(chemical, geography)).exists())
+            or (Path(directory) / developments_file(chemical, geography)).exists()
+            or has_signals(chemical, geography, directory))
+
+
+# A CHEMICAL WITH SIGNALS IS A CHEMICAL WITH SOMETHING BEHIND IT (v1.2.132, 25 November 2026).
+#
+# The rule above this one asked for a file: a researched plant roster, or a researched list of
+# developments. Three chemicals have those. So the page offered three, while the register and the
+# producers' own announcements named thirteen - pure MDI alone had 28 signals and no page.
+# Stefan, an hour and a half before a customer demo: "'a chemical with nothing behind it should not
+# be offered' is right but I do not believe there are no signals for the other chemicals. I dont
+# care about the plant... that is a restriction you invented yourself."
+#
+# It was. What he ruled out on 11 October was a choice with NOTHING behind it. A signal that names
+# the chemical is something, whether or not anybody has listed its plants.
+#
+# "Names the chemical" is meant strictly. An item that names no chemical bears on every market and
+# is shown on every page, and counting it here would open a page for every chemical we know of -
+# the 165 dead options that the October ruling removed.
+_NAMED: dict[str, tuple] = {}
+
+
+def _signals_that_name_a_chemical(directory: Path):
+    """The register's printable rows that name a chemical, and where producers' signals place each
+    chemical. Read again only when one of the two files has changed."""
+    directory = Path(directory)
+    feed = directory.parent / "producer_signals.json"
+    stamp = tuple(file.stat().st_mtime_ns if file.exists() else 0
+                  for file in (register.path(directory), feed))
+    key = str(directory.resolve())
+    held = _NAMED.get(key)
+    if held is not None and held[0] == stamp:
+        return held[1], held[2]
+    rows = [row for row in register.load(directory) if row.chemical_list and row.is_printable]
+    places: dict[str, set[str]] = {}
+    if feed.exists():
+        from .producer_signals import CUSTOMER_VISIBLE_CATEGORIES, load_producer_signals
+
+        for signal in load_producer_signals(feed):
+            if (signal.verification_status != "VERIFIED"
+                    or signal.category not in CUSTOMER_VISIBLE_CATEGORIES or not signal.chemical):
+                continue
+            places.setdefault(canonical_code(signal.chemical), set()).add(
+                str(signal.geography or "").strip())
+    _NAMED[key] = (stamp, rows, places)
+    return rows, places
+
+
+def has_signals(chemical: str, geography: str, directory: Path = DATA_DIR) -> bool:
+    """Whether a signal that names this chemical bears on this market.
+
+    A producer's own announcement counts where it says it happened. An item from one of HTC's
+    reports counts wherever the page would show it for this chemical: the place it names, every
+    Asian market for one that says Asia, every market for one that says worldwide.
+    """
+    rows, places = _signals_that_name_a_chemical(directory)
+    code = canonical_code(chemical)
+    if geography in places.get(code, ()):
+        return True
+    return any(code in {canonical_code(named) for named in row.chemical_list}
+               and register.covers(row, chemical=chemical, geography=geography)
+               for row in rows)
 
 
 def markets_with_intelligence(chemical: str, geographies: Iterable[str],
