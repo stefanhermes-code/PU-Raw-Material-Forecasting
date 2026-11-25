@@ -10,6 +10,7 @@ from typing import Protocol
 from uuid import uuid4
 
 import pandas as pd
+from raw_material_forecasting.platform_store import protect_tables
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, insert, select
 from sqlalchemy.engine import Engine
 
@@ -104,6 +105,7 @@ class OutputGenerationRepository:
     def __init__(self, engine: Engine):
         self.engine = engine
         _generation_metadata.create_all(engine)
+        protect_tables(engine, "output generation")
 
     def add(self, record: OutputGenerationRecord) -> None:
         with self.engine.begin() as conn:
@@ -211,6 +213,7 @@ class DeliveryAttemptRepository:
     def __init__(self, engine: Engine):
         self.engine = engine
         _delivery_metadata.create_all(engine)
+        protect_tables(engine, "delivery attempts")
 
     def add(self, record: DeliveryAttemptRecord) -> None:
         with self.engine.begin() as conn:

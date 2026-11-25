@@ -8,6 +8,7 @@ from typing import Protocol
 from uuid import uuid4
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+from raw_material_forecasting.platform_store import protect_tables
 from sqlalchemy import (
     Boolean,
     Column,
@@ -169,6 +170,7 @@ class DeliveryScheduleRepository:
     def __init__(self, engine: Engine):
         self.engine = engine
         _schedule_metadata.create_all(engine)
+        protect_tables(engine, "delivery schedule")
 
     @staticmethod
     def _schedule_from_row(row) -> DeliverySchedule:

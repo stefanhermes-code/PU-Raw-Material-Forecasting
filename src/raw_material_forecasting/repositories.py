@@ -4,6 +4,7 @@ from dataclasses import asdict
 from datetime import date, datetime
 from typing import Iterable
 
+from raw_material_forecasting.platform_store import protect_tables
 from sqlalchemy import Boolean, Date, DateTime, Float, Integer, MetaData, String, Table, Text, UniqueConstraint, Column, select, insert, update
 from sqlalchemy.engine import Engine
 
@@ -137,6 +138,7 @@ class MarketRepository:
     def __init__(self, engine: Engine):
         self.engine = engine
         metadata.create_all(engine)
+        protect_tables(engine, "market repository")
 
     def upsert_source(self, src: SourceRecord) -> None:
         with self.engine.begin() as c:

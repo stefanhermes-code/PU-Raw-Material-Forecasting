@@ -7,12 +7,15 @@ tool) the SQLite file is used as before, so nothing that builds its own engine c
 """
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from pathlib import Path
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
+
+log = logging.getLogger(__name__)
 
 SQLITE_FALLBACK = Path("data/platform_admin.db")
 
@@ -109,3 +112,78 @@ def platform_store_engine() -> Engine:
             engine = create_engine(url, future=True, **postgres_pool_settings(url, STORE_POOL))
         _ENGINES[url] = engine
         return engine
+
+
+# ----------------------------------------------------------------------------- who may read a table
+#
+# Supabase puts a web API in front of every table in the `public` schema. Whoever holds the
+# project's anon key may read, change and delete a table through it - unless the table has row
+# level security switched on, in which case, with no policy written, the API's roles see nothing.
+#
+# This application never uses that API. It connects to Postgres as the role that owns the tables,
+# and row level security does not apply to an owner. So switching it on costs the application
+# nothing and closes the API.
+#
+# But a table is created WITHOUT it. On 22 November 2026 Supabase's security advisor found 21
+# tables served that way - the customers, the users and both tables of password digests among
+# them - because they were tables this application had made for itself after somebody last
+# protected the schema by hand. Nothing in the code did it (Stefan, 25 November 2026: "Do it now,
+# dont wait"). The store has a trigger for it since that day; this is the same rule in the code,
+# so that a store built from nothing is protected by the application that builds it.
+APPLICATION_SCHEMAS = ("public", "forecasting")
+
+# Tables of ours with row level security off. Only the ones this connection OWNS: it could not
+# alter another role's table, and has no business deciding who reads one.
+_UNPROTECTED = text("""
+    select n.nspname, c.relname
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where c.relkind in ('r', 'p')
+      and n.nspname = any(:schemas)
+      and not c.relrowsecurity
+      and pg_get_userbyid(c.relowner) = current_user
+    order by 1, 2
+""")
+
+_PROTECTED: set[tuple[Engine, str]] = set()
+_PROTECTED_LOCK = threading.Lock()
+
+
+def protect_tables(engine: Engine, made_by: str) -> list[str]:
+    """Switch row level security on for every table of ours that lacks it. Returns their names.
+
+    Called straight after each `create_all`, with a word for who made the tables. It runs once
+    per engine for each of them - a question to the catalogue, and normally nothing to do - and
+    it looks at every table in the application's schemas each time, not only the caller's, so the
+    market-data engine's tables, which a migration creates, are covered by whichever part of the
+    application starts first.
+
+    It never stops a page. A table that cannot be altered - a lock held too long, a role that
+    does not own it - is a line in the log, and the page goes on; the store's own trigger and
+    the next start are still there. Only Postgres has the question at all: a SQLite file has no
+    roles and nobody else to keep out.
+    """
+    if engine.dialect.name != "postgresql":
+        return []
+    with _PROTECTED_LOCK:
+        if (engine, made_by) in _PROTECTED:
+            return []
+        _PROTECTED.add((engine, made_by))
+    try:
+        quote = engine.dialect.identifier_preparer.quote
+        with engine.begin() as connection:
+            # A table somebody is reading is not worth hanging a page for.
+            connection.execute(text("set local lock_timeout = '3s'"))
+            found = [(str(schema), str(table)) for schema, table in
+                     connection.execute(_UNPROTECTED, {"schemas": list(APPLICATION_SCHEMAS)})]
+            for schema, table in found:
+                connection.execute(text(
+                    f"alter table {quote(schema)}.{quote(table)} enable row level security"))
+    except Exception:  # noqa: BLE001 - who may read a table must never decide whether a page opens
+        log.exception("row level security could not be checked or switched on (tables made by %s)", made_by)
+        return []
+    names = [f"{schema}.{table}" for schema, table in found]
+    if names:
+        log.warning("row level security switched on for %s (found after %s made its tables)",
+                    ", ".join(names), made_by)
+    return names

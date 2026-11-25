@@ -5,6 +5,7 @@ import threading
 import weakref
 from datetime import datetime, timezone
 
+from raw_material_forecasting.platform_store import protect_tables
 from sqlalchemy import Boolean, Column, Date, DateTime, Integer, MetaData, String, Table, Text, delete, insert, select, update
 from sqlalchemy.engine import Engine
 
@@ -213,6 +214,7 @@ class PlatformAdminRepository:
                 return
         metadata.create_all(self.engine)
         self._add_missing_columns()
+        protect_tables(self.engine, "platform admin")
         with _SCHEMA_LOCK:
             _SCHEMA_SETTLED.add(self.engine)
 
