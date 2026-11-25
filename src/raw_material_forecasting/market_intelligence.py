@@ -1020,8 +1020,11 @@ def market_line(developments: list[Development], today: date | None = None) -> H
     newest = sorted(recent, key=lambda d: d.date, reverse=True)
     last = next((d for d in newest if _direction(d.development)), None)
     if last is None:
-        headline = (f"{len(recent)} market {'reading' if len(recent) == 1 else 'readings'} "
-                    f"since {_short_date(min(d.date for d in recent))}, direction not stated.")
+        # Nothing here says which way the market went, so there is no reading to report. This
+        # used to print "2 market readings, direction not stated" over whatever had been typed
+        # Market for want of another type - on 25 November 2026, a car-seat concept and a blowing
+        # agent. Those are in the signals table under their own dates; they are not the market.
+        return None
     else:
         way = "firmer" if _direction(last.development) > 0 else "softer"
         before = [d for d in newest if d.date < last.date and _direction(d.development)]
@@ -1030,6 +1033,15 @@ def market_line(developments: list[Development], today: date | None = None) -> H
         turned = (f", against {against} earlier {'reading' if against == 1 else 'readings'} "
                   f"the other way" if against else "")
         headline = (f"The market was last read {way} on {_short_date(last.date)}{turned}.")
+        # The line is as old as the reading it states, and it quotes readings. It used to take
+        # its date from the newest item typed Market, whatever that item said: on 25 November 2026
+        # it read "latest 15 Nov - the market was last read softer on 12 Oct", over a car-seat
+        # concept and a blowing agent, because those two had no other type to fall under. Dated by
+        # the reading, a line that old is left off the page by `current`.
+        stated = [d for d in newest if _direction(d.development)]
+        return Horizon("Market", headline,
+                       " ".join(d.development.rstrip(".") + "." for d in stated[:3]),
+                       quiet=False, as_of=last.date, count=len(stated))
     body = " ".join(d.development.rstrip(".") + "." for d in newest[:3])
     return Horizon("Market", headline, body, quiet=False,
                    as_of=newest[0].date, count=len(recent))
@@ -1157,6 +1169,22 @@ def impact(plants: list[Plant], pipeline: list[PipelinePlant], developments: lis
         aging = f"nothing new in {age} days" if age is not None and age > STALE_AFTER_DAYS else ""
         out.append(horizon if not aging else replace(horizon, aging=aging))
     return out
+
+
+def current(horizons: list[Horizon]) -> list[Horizon]:
+    """The Impact lines a customer is shown: the ones that still stand on recent evidence.
+
+    `impact` marks a line whose newest evidence is older than `STALE_AFTER_DAYS`, and until
+    25 November 2026 the page printed it with that mark: "Market - latest 12 Oct - nothing new in
+    44 days. The market was last read softer on 12 Oct." That is honest and it is not Impact. A
+    reading that old is history, and under a heading that says what bears on the market now it
+    told a customer the page had stopped (Stefan, the morning of a demo: "last message mid
+    October. That is NOT good"). The line is left out; the signals it was drawn from stay in the
+    tables below, each under its own date, where a six-week-old item reads as what it is.
+
+    The standing lines - who owns the capacity, what is being built - carry no age and stay.
+    """
+    return [horizon for horizon in horizons if not horizon.aging]
 
 
 # ---------------------------------------------------------------------------------------------
@@ -1322,7 +1350,12 @@ def developments_block(developments: list, caption: str = "",
         run_row(item) if isinstance(item, Run) else
         f'<tr><td class="mi-date">{_escape(format_development_date(item))}</td>'
         + "<td>"
-        + ('<span class="mi-unconfirmed">Unconfirmed</span>'
+        # The word is the briefing's own. An item whose Status reads "Market indication based on
+        # Longzhong national mainstream pricing" is a published reading, not a rumour, and it was
+        # being printed under "Unconfirmed" - which is a different grade, and one this page does
+        # not print at all (`intelligence_register.PRINTABLE`). Stefan, 25 November 2026, on a
+        # page about to be shown to a customer: "it says things like unconfirmed. That is NOT good."
+        + ('<span class="mi-unconfirmed">Indication</span>'
            if str(getattr(item, "confidence", "")).upper() == "INDICATION" else "")
         + f"{_escape(item.development)}"
         + (f'<div class="mi-ctx">{_escape(item.context)}</div>' if item.context else "")
@@ -1638,8 +1671,9 @@ def page_blocks(plants: list[Plant], pipeline: list[PipelinePlant], signals=None
     # Impact sits at the top of Market Signals, above the table it is worked out from, so a reader
     # gets the conclusion first and the detail underneath (Stefan, 22 September 2026). No Type legend.
     blocks += ["### Market Signals", "#### Impact"]
-    blocks += [horizon_block(horizon) for horizon in impact(plants, pipeline, developments, today,
-                                                            geography, chemical, graph, condition)]
+    blocks += [horizon_block(horizon)
+               for horizon in current(impact(plants, pipeline, developments, today,
+                                             geography, chemical, graph, condition))]
     # The recent signals stand open under Impact; everything older keeps the fold. The conclusion
     # is still first and the evidence for it is now under it without a click.
     latest, earlier = split_developments(developments, today)

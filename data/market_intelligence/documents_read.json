@@ -534,6 +534,11 @@
       "sha": "26d52965302ba6f7e8a4cb200f0003915850d638babdd65c4b2d644e6c862fd3",
       "day": "",
       "chars": 12728
+    },
+    "C:\\Users\\Stefan Hermes\\OneDrive - Foam Innovations & Solutions\\Documenten\\Bedrijven\\HTC\\HTC GLOBAL INTERNAL FOLDER\\Articles and LeadMagnets\\PU Disruption report\\2026-11-23 - Strait of Hormuz PU Supply Chain Special Report.docx|2656148|1795392723": {
+      "sha": "6a54f2ae6aba7b9d94970dbbf6702d2408c173686eb8108afb3275e6866a6bc5",
+      "day": "2026-11-23",
+      "chars": 7946
     }
   },
   "read": [
@@ -949,6 +954,27 @@
       "folder": "PU Disruption report",
       "name": "Geopolitical Update EU Flexible Foam 06-04-2026.docx",
       "read_on": "2026-10-26"
+    },
+    {
+      "sha": "6a54f2ae6aba7b9d94970dbbf6702d2408c173686eb8108afb3275e6866a6bc5",
+      "day": "2026-11-23",
+      "folder": "PU Disruption report",
+      "name": "2026-11-23 - Strait of Hormuz PU Supply Chain Special Report.docx",
+      "read_on": "2026-11-25"
+    },
+    {
+      "sha": "44dac163bcd6b59524deaacf3d5d2d51c18749f2a03fd9cccc7d3dcfb3e73146",
+      "day": "2026-11-18",
+      "folder": "Global Pricing Report for Import",
+      "name": "2026-11-18 - Global PU Raw Material Price Monitor.docx",
+      "read_on": "2026-11-25"
+    },
+    {
+      "sha": "26d52965302ba6f7e8a4cb200f0003915850d638babdd65c4b2d644e6c862fd3",
+      "day": "",
+      "folder": "Global PU Industry Briefing",
+      "name": "2026-11-16 - Global Polyurethane Industry Briefing.docx",
+      "read_on": "2026-11-25"
     }
   ]
 }

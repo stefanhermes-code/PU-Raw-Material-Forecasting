@@ -1074,5 +1074,13 @@
         "chemicals": ""
       }
     ]
+  },
+  {
+    "event": "Strait of Hormuz disruption",
+    "reported": "2026-11-23",
+    "state": "Disrupted",
+    "note": "Selective passage continues, but cargo reliability remains impaired",
+    "document": "2026-11-23 - Strait of Hormuz PU Supply Chain Special Report.docx",
+    "exposures": []
   }
 ]

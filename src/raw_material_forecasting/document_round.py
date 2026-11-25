@@ -158,14 +158,18 @@ def run(*, data_dir: Path, folders: Sequence[Any] | None = None,
                 document, name=arrival.name, event=event_of(arrival.name, document.text))
             if found.state:
                 new_conditions.append(found)
-            else:
-                # The reading is the state, and a state is never guessed from prose here -
-                # "remains below a full critical stop" is not a reading of Critical. But the report
-                # is not therefore empty: it is read for its signals instead, so nothing waits for
-                # a person. Stefan, 26 October 2026: "It should not need any intervention from my
-                # side."
-                signals = _developments(document, arrival, "monitor", today)
-                new_developments += signals
+            # The reading is the state, and a state is never guessed from prose here -
+            # "remains below a full critical stop" is not a reading of Critical. But a report is
+            # read for its signals whether it grades the chain or not, so nothing waits for a
+            # person. Stefan, 26 October 2026: "It should not need any intervention from my side."
+            #
+            # Until 25 November 2026 only an UNGRADED report was read for them. Every special
+            # report since 30 October states a grade, so the grade on the page moved each week and
+            # the signals under it stopped: the Logistics line was still quoting the sinkings of
+            # 13 October on 25 November, with three later reports unread for what they said.
+            signals = _developments(document, arrival, "monitor", today)
+            new_developments += signals
+            if not found.state:
                 outcome.ungraded.append((arrival.name, len(signals)))
 
         if kind == "monitor" and send_prices is not None:

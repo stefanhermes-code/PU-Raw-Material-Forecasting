@@ -87,8 +87,34 @@ _DAY = re.compile(
 # "7-13 September 2026" and "28 September-4 October 2026" are both written, and the second one has
 # a month on each side of the dash.
 _PERIOD = re.compile(
-    r"identified:\s*(\d{1,2})\s*(?:([A-Za-z]+)\s*)?(?:-|to)\s*(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})",
+    r"(?:identified:|developments\s*\|)\s*(\d{1,2})\s*(?:([A-Za-z]+)\s*)?(?:-|\u2013|\u2014|to)\s*"
+    r"(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})",
     re.I)
+
+# THE NOVEMBER LAYOUT (v1.2.129, 25 November 2026).
+# The briefing was not made between 19 October and 16 November, and when it came back it was laid
+# out differently. The reader knew one layout, so the 16 November issue was read as five headlines
+# with no status, no chemical and no market - which the page will not print - and Market
+# Intelligence went on saying its newest reading was mid-October (Stefan, the morning of a customer
+# demo: "it says things like unconfirmed, last message mid October. That is NOT good").
+#
+#   October    Status: Confirmed company announcement
+#              Scope: China | TDI; flexible foam
+#              Practical implication: ...
+#   November   STATUS  Confirmed company announcement   |   SCOPE  China | TDI; flexible foam
+#              Practical follow-up: ...
+#
+# Both are read. STATUS and SCOPE in capitals need no colon; in any other case they need one, so a
+# sentence that happens to begin "Status quo" is not taken for a status line.
+_STATUS = re.compile(r"^(?:status\s*:|STATUS\s+)\s*(.*)$")
+_STATUS_ANY_CASE = re.compile(r"^status\s*:\s*(.*)$", re.I)
+_SCOPE = re.compile(r"^(?:scope\s*:|SCOPE\s+)\s*(.*)$")
+_SCOPE_ANY_CASE = re.compile(r"^scope\s*:\s*(.*)$", re.I)
+_SCOPE_ON_THE_STATUS_LINE = re.compile(r"\s*\|\s*(?:SCOPE\s+|scope\s*:\s*|Scope\s*:\s*)")
+# Where the numbered items stop and the briefing goes on to something else. Without these the text
+# under the heading was read as more of the last item's advice.
+_AFTER_THE_ITEMS = ("catch-up", "industry, regulation and capacity watch",
+                    "regulation and capacity watch")
 _PREPARED = re.compile(r"^Prepared:?\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})", re.I | re.M)
 _REFERENCE = re.compile(r"\[\d+\]")
 # How hard HTC Global intends to chase the item. It opens most Practical implication lines and it
@@ -139,7 +165,10 @@ class Briefing:
 
 def looks_like_a_briefing(text: str) -> bool:
     head = (text or "")[:2000].lower()
-    return "polyurethane" in head and "briefing" in head and "consequential developments" in head
+    # "Consequential developments identified" until October, "Consequential industry developments"
+    # from November. The two words are what the document is; the one between them is not.
+    return ("polyurethane" in head and "briefing" in head
+            and "consequential" in head and "developments" in head)
 
 
 def _month(word: str) -> int | None:
@@ -290,17 +319,28 @@ def read(text: str, *, name: str = "") -> Briefing:
             continue
         if current is None:
             continue
-        if low.startswith("status:"):
-            current.status_line = stripped.split(":", 1)[1].strip()
+        if any(low.startswith(heading) for heading in _AFTER_THE_ITEMS):
+            close(current, body)
+            current, body = None, []
             continue
-        if low.startswith("scope:"):
-            current.scope_line = stripped.split(":", 1)[1].strip()
+        status = _STATUS.match(stripped) or _STATUS_ANY_CASE.match(stripped)
+        if status:
+            said = status.group(1).strip()
+            # November writes the scope on the same line, after a bar.
+            parts = _SCOPE_ON_THE_STATUS_LINE.split(said, maxsplit=1)
+            current.status_line = parts[0].strip()
+            if len(parts) == 2:
+                current.scope_line = parts[1].strip()
+            continue
+        scope = _SCOPE.match(stripped) or _SCOPE_ANY_CASE.match(stripped)
+        if scope:
+            current.scope_line = scope.group(1).strip()
             continue
         if low.startswith("why it matters"):
             field_now = "context"
             current.context = stripped.split(":", 1)[1].strip() if ":" in stripped else ""
             continue
-        if low.startswith("practical implication"):
+        if low.startswith("practical implication") or low.startswith("practical follow-up"):
             field_now = "implication"
             said = stripped.split(":", 1)[1].strip() if ":" in stripped else ""
             current.implication = _TRIAGE.sub("", said).lstrip()

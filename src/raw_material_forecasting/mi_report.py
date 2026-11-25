@@ -243,7 +243,7 @@ def _content(plants, pipeline, developments, horizons, chemical: str, geography:
         for item in developments:
             # The same word the screen puts in front of the headline. A stated indication is
             # worth printing and is not worth printing as a fact.
-            flag = (_run("Unconfirmed  \u00b7  ", size=SMALL, bold=True, color=AMBER, caps=True)
+            flag = (_run("Indication  \u00b7  ", size=SMALL, bold=True, color=AMBER, caps=True)
                     if str(getattr(item, "confidence", "")).upper() == "INDICATION" else "")
             signal = _p(flag + _run(item.development, size=SMALL, bold=True), after=0)
             if item.context:
@@ -358,8 +358,9 @@ def market_intelligence_docx(plants, pipeline, signals=None, today: date | None 
     developments = mi.load_developments(directory, signals=signals, chemical=chemical,
                                         geography=geography, graph=graph)
     condition = mi.latest_condition(directory)
-    horizons = mi.impact(plants, pipeline, developments, today, geography, chemical, graph,
-                         condition)
+    # The same lines as the screen: `current` leaves out a line standing on old evidence.
+    horizons = mi.current(mi.impact(plants, pipeline, developments, today, geography, chemical,
+                                    graph, condition))
     width = _content_width()
     title = f"{display_chemical(chemical)} · {geography} Market Intelligence"
     body = _content(plants, pipeline, developments, horizons, chemical, geography, today, width,
