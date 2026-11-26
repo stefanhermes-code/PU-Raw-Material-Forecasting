@@ -6,7 +6,7 @@ import weakref
 from datetime import datetime, timezone
 
 from raw_material_forecasting.platform_store import protect_tables
-from sqlalchemy import Boolean, Column, Date, DateTime, Integer, MetaData, String, Table, Text, delete, insert, select, update
+from sqlalchemy import Boolean, Column, Date, DateTime, Integer, LargeBinary, MetaData, String, Table, Text, delete, insert, select, update
 from sqlalchemy.engine import Engine
 
 from .auth import normalise_email
@@ -94,6 +94,33 @@ mails = Table(
     Column("error", Text, nullable=False, default=""),
     Column("sent_at", DateTime(timezone=True), nullable=False),
     Column("sent_by", String, nullable=False),
+)
+# An edition of the Price Monitor made for a customer (v1.2.136), and the document itself.
+#
+# The document is kept in the store and not on a disk. The live site's disk is emptied whenever the
+# host restarts it, and "open the October report and see who it was sent to" has to work in March.
+# It is a megabyte or two a customer a month, and `list_monitor_issues` never reads it: the store's
+# traffic allowance is shared by eight projects, and a list that pulled every document it named
+# would spend it.
+monitor_issues = Table(
+    "pa_monitor_issue", metadata,
+    Column("issue_id", String, primary_key=True),
+    Column("subscription_id", String, nullable=False),
+    Column("company_id", String, nullable=False),
+    Column("edition", String, nullable=False),
+    Column("title", Text, nullable=False),
+    Column("file_name", String, nullable=False),
+    Column("markets", Integer, nullable=False),
+    Column("size_bytes", Integer, nullable=False),
+    Column("status", String, nullable=False),
+    Column("made_at", DateTime(timezone=True), nullable=False),
+    Column("made_by", String, nullable=False),
+    Column("sent_at", DateTime(timezone=True)),
+    Column("sent_by", String, nullable=False, default=""),
+    Column("recipients_json", Text, nullable=False, default="[]"),
+    Column("mail_id", String, nullable=False, default=""),
+    Column("note", Text, nullable=False, default=""),
+    Column("content", LargeBinary, nullable=False),
 )
 users = Table(
     "pa_user", metadata,
@@ -381,6 +408,56 @@ class PlatformAdminRepository:
         with self.engine.connect() as conn:
             rows = conn.execute(query).mappings().all()
         return [self._subscription(r) for r in rows]
+
+    # ---- the Price Monitor ---------------------------------------------------------------------
+    _ISSUE_COLUMNS = ("issue_id", "subscription_id", "company_id", "edition", "title", "file_name",
+                      "markets", "size_bytes", "status", "made_at", "made_by", "sent_at", "sent_by",
+                      "recipients_json", "mail_id", "note")
+
+    @staticmethod
+    def _issue_values(issue) -> dict:
+        return {
+            "issue_id": issue.issue_id, "subscription_id": issue.subscription_id,
+            "company_id": issue.company_id, "edition": issue.edition, "title": issue.title,
+            "file_name": issue.file_name, "markets": issue.markets,
+            "size_bytes": issue.size_bytes, "status": issue.status, "made_at": issue.made_at,
+            "made_by": issue.made_by, "sent_at": issue.sent_at, "sent_by": issue.sent_by,
+            "recipients_json": json.dumps(list(issue.recipients)), "mail_id": issue.mail_id,
+            "note": issue.note}
+
+    def add_monitor_issue(self, issue, content: bytes) -> None:
+        """Keep one edition and its document. A `price_monitor.MonitorIssue`."""
+        with self.engine.begin() as conn:
+            conn.execute(insert(monitor_issues).values(**self._issue_values(issue), content=content))
+
+    def update_monitor_issue(self, issue) -> None:
+        """What became of an edition: sent, held back, replaced. The document is not rewritten."""
+        with self.engine.begin() as conn:
+            conn.execute(update(monitor_issues)
+                         .where(monitor_issues.c.issue_id == issue.issue_id)
+                         .values(**self._issue_values(issue)))
+
+    def list_monitor_issues(self, limit: int = 200) -> list:
+        """The newest editions first, WITHOUT their documents. See the table's own comment."""
+        from raw_material_forecasting.price_monitor import MonitorIssue
+
+        columns = [monitor_issues.c[name] for name in self._ISSUE_COLUMNS]
+        with self.engine.connect() as conn:
+            rows = conn.execute(select(*columns).order_by(monitor_issues.c.made_at.desc())
+                                .limit(int(limit))).mappings().all()
+        return [MonitorIssue(
+            r["issue_id"], r["subscription_id"], r["company_id"], r["edition"], r["title"],
+            r["file_name"], int(r["markets"]), int(r["size_bytes"]), r["status"],
+            _as_utc(r["made_at"]), r["made_by"], _as_utc(r["sent_at"]), r["sent_by"] or "",
+            tuple(json.loads(r["recipients_json"] or "[]")), r["mail_id"] or "", r["note"] or "")
+            for r in rows]
+
+    def monitor_issue_content(self, issue_id: str) -> bytes | None:
+        """One edition's document. Asked for one at a time, when somebody opens or sends it."""
+        with self.engine.connect() as conn:
+            row = conn.execute(select(monitor_issues.c.content)
+                               .where(monitor_issues.c.issue_id == issue_id)).first()
+        return bytes(row[0]) if row else None
 
     def add_mail(self, mail) -> None:
         """Record one email the application tried to send. A `mail.MailRecord`."""

@@ -7376,9 +7376,87 @@ def _markets_held_for_platform_admin() -> list[tuple[str, str, bool]] | None:
                   for chemical, geography in held if chemical and geography)
 
 
+def _price_monitor_markets(scope, tell=None) -> list[dict] | None:
+    """Every forecast market a product opens, as what the Forecast page's report is made from.
+
+    The Price Monitor is "the forecast report as per the button on the forecast page" (Stefan,
+    26 November 2026), for every market a customer's product covers. So this walks the Forecast
+    page's own three selectors - chemical, geography, terms - over everything `scope` opens, and
+    for each market gathers exactly what the button hands `page_reports.forecast_docx`: the same
+    identities, the same forecast, the same export frame, the same "today". A market the page
+    would show no forecast for is left out, as the page would leave the button out.
+
+    None when the market data cannot be read at all; a market the engine does not answer for is
+    skipped, and the document says how many markets it carries.
+
+    `tell(done, of, name)` is called before each market, because each one asks the engine for a
+    forecast and forty-six of them took eleven minutes the first time this ran.
+    """
+    snapshot = _load_step6_snapshot(readings="index")
+    if snapshot is None:
+        return None
+    identities = [dict(row) for row in snapshot.identities
+                  if is_published_market(row) and identity_allowed(row, scope)]
+    observations = list(snapshot.observations)
+    drawable = customer_catalogue.offered(identities, snapshot.observations,
+                                          customer_catalogue.FORECAST,
+                                          forecast_from_year=FORECAST_FROM_YEAR)
+    priced_now = customer_catalogue.offered(identities, snapshot.observations,
+                                            customer_catalogue.CURRENT, sources=snapshot.sources)
+    horizons = tuple(weeks for weeks in (4, 8, 12) if weeks <= scope.forecast_horizon_months * 4)
+    if not horizons:
+        return []
+    currency = display_currency()
+    same_release = _engine_is_this_release()
+    chemicals = chemicals_within_entitlement(customer_catalogue.chemicals_offered(drawable),
+                                             scope.chemicals)
+    wanted: list[tuple[str, str, str, tuple[str, ...]]] = []
+    for chemical in _alphabetical(chemicals, display_chemical):
+        geographies = filter_entitled_values(geographies_with_a_market(drawable, chemical),
+                                             scope.geographies)
+        for origin in _alphabetical(geographies, _display_market_dimension):
+            for incoterm in filter_entitled_values(terms_with_a_market(drawable, chemical, origin),
+                                                   scope.incoterms):
+                keys = forecast_identity_keys(identities, observations, chemical, origin, incoterm)
+                if keys:
+                    wanted.append((chemical, origin, incoterm, keys))
+    entries: list[dict] = []
+    for number, (chemical, origin, incoterm, keys) in enumerate(wanted, 1):
+        market = {"Chemical": _display_market_dimension(chemical), "Geography": origin,
+                  INCOTERM_LABEL: _display_basis(incoterm)}
+        if callable(tell):
+            tell(number, len(wanted), " · ".join(market.values()))
+        payload = _load_forecast(keys[0], horizons)
+        if not payload:
+            continue
+        market_price = (_current_market_price(identities, snapshot.sources, priced_now,
+                                              chemical, origin, incoterm)
+                        if same_release else None)
+        export = forecast_export_frame(payload, str(payload.get("currency") or ""),
+                                       currency, _load_fx_table(), market_price=market_price)
+        history, ahead = _report_series(export, currency)
+        if not ahead:
+            continue
+        if market_price is not None:
+            today_day, today_value = market_price
+        else:
+            state = selected_market_evidence(
+                snapshot, keys,
+                readings=_market_readings(tuple(sorted(keys)), currency, _snapshot_stamp()))
+            today_value, today_day = state.reference_value, state.latest_observation_date
+        entries.append({
+            "market": market, "history": history, "forecast": ahead, "currency": currency,
+            "today_price": (units.with_unit(f"{currency} {today_value:,.0f}")
+                            if today_value is not None else ""),
+            "priced": str(today_day or ""),
+        })
+    return entries
+
+
 def _platform_admin_internal_renderers() -> dict[str, object]:
     return {
         "Markets held": _markets_held_for_platform_admin,
+        "Price Monitor markets": _price_monitor_markets,
         "Import": render_document_import,
         "Reports": render_period_report,
         "Data & Sources": lambda: render_data_sources(None),

@@ -29,11 +29,24 @@ WINDOW_DAYS = 183
 # run; the table is for the numbers a buyer quotes, and those are recent.
 TABLE_MONTHS = 3
 CHART_CM = (16.5, 8.5)
+# The Price Monitor's graph: the same width, three centimetres lower, drawn from fewer pixels.
+#
+# Lower, because a market in an edition sits under its own name and has to fit one page. At the
+# button's height the last two rows of the forecast fell onto a second page of their own -
+# measured on the first real edition, 26 November 2026: 46 markets, 95 pages. At 6.4 cm the
+# closing caption alone still went over; at 5.2 a market is one page, checked in Word. Fewer pixels,
+# because an edition carries a graph for every market and travels as one email attachment of at
+# most 2.9 MB: at the button's resolution 46 markets came to 2.5 MB, and Full Chain would not go.
+MONITOR_CHART_CM = (16.5, 5.2)
+MONITOR_CHART_PIXELS = 1150
 
 
-def _doc_rels(with_chart: bool) -> str:
+def _doc_rels(with_chart: bool, charts: tuple[str, ...] = ()) -> str:
     chart = (f'<Relationship Id="rIdChart" Type="{_R}/image" Target="media/chart.png"/>'
              if with_chart else "")
+    # A document of many markets carries a chart for each, under its own name (`monitor_docx`).
+    chart += "".join(f'<Relationship Id="rId{name}" Type="{_R}/image" Target="media/{name}.png"/>'
+                     for name in charts)
     return ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
             '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
             f'<Relationship Id="rIdStyles" Type="{_R}/styles" Target="styles.xml"/>'
@@ -159,7 +172,9 @@ def _months_table(rows: list[tuple[date, float]], currency: str, width: int,
     ]
 
 
-def _package(body: str, title: str, chart: bytes | None, assets: Path) -> bytes:
+def _package(body: str, title: str, chart: bytes | None, assets: Path,
+             charts: dict[str, bytes] | None = None) -> bytes:
+    charts = charts or {}
     document = (
         f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document {_NS}><w:body>{body}'
         '<w:sectPr><w:headerReference w:type="default" r:id="rIdHeader"/>'
@@ -172,7 +187,8 @@ def _package(body: str, title: str, chart: bytes | None, assets: Path) -> bytes:
         archive.writestr("[Content_Types].xml", _CONTENT_TYPES)
         archive.writestr("_rels/.rels", _RELS)
         archive.writestr("docProps/core.xml", _core(title))
-        archive.writestr("word/_rels/document.xml.rels", _doc_rels(chart is not None))
+        archive.writestr("word/_rels/document.xml.rels",
+                         _doc_rels(chart is not None, tuple(charts)))
         archive.writestr("word/_rels/header1.xml.rels", _HDR_RELS)
         archive.writestr("word/styles.xml", _STYLES)
         archive.writestr("word/header1.xml", _header())
@@ -182,6 +198,8 @@ def _package(body: str, title: str, chart: bytes | None, assets: Path) -> bytes:
         archive.writestr("word/media/htc_global.png", (assets / HTC_LOGO.name).read_bytes())
         if chart is not None:
             archive.writestr("word/media/chart.png", chart)
+        for name, png in charts.items():
+            archive.writestr(f"word/media/{name}.png", png)
     return buffer.getvalue()
 
 
@@ -221,14 +239,20 @@ def current_market_docx(history, *, market: dict, currency: str, kicker: str, pr
     return _package("".join(parts), title, png, assets)
 
 
-def forecast_docx(history, forecast, *, market: dict, currency: str, today_price: str,
-                  priced: str, note: str = "", today: date | None = None,
-                  assets: Path = ASSETS) -> bytes:
-    """The Forecast page for one selection.
+def _forecast_body(history, forecast, *, currency: str, today_price: str, priced: str,
+                   note: str, today: date, chart_rel: str = "rIdChart", chart_pic: int = 2,
+                   numbers_on_a_new_page: bool = True,
+                   chart_cm: tuple[float, float] = CHART_CM,
+                   chart_pixels: int | None = None) -> tuple[list[str], bytes, list[tuple]]:
+    """One market's forecast report under its title: the band, the graph and the two tables.
 
-    `forecast` is (period, value, low, high) per horizon, exactly the rows the page's chart draws.
+    Written once and used twice: by `forecast_docx`, which is the Forecast page's button, and by
+    `monitor_docx`, which is that same report for every market a customer's Price Monitor covers
+    (Stefan, 26 November 2026: "you can use the forecast report as per the button on the forecast
+    page"). One body, so the Monitor cannot come to say something the button does not.
+
+    Returns the parts, the chart, and the forecast rows as (short name, value) for an overview.
     """
-    today = today or date.today()
     rows = _window([(day, value) for day, value in
                     ((_as_date(d), v) for d, v in history or []) if day is not None])
     ahead = [(day, float(value), None if low is None else float(low),
@@ -236,10 +260,13 @@ def forecast_docx(history, forecast, *, market: dict, currency: str, today_price
              for day, value, low, high in
              ((_as_date(p), v, lo, hi) for p, v, lo, hi in forecast or []) if day is not None]
     width = _content_width()
-    title = f"{_market_line(market)} Forecast"
     band = [(day, low, high) for day, _v, low, high in ahead if low is not None and high is not None]
-    chart, png = _chart_block(rows, currency=currency,
-                              forecast=[(day, value) for day, value, _lo, _hi in ahead], band=band)
+    size = (None if chart_pixels is None
+            else (chart_pixels, int(chart_pixels * chart_cm[1] / chart_cm[0])))
+    png = price_chart_png(rows, currency=currency,
+                          forecast=[(day, value) for day, value, _lo, _hi in ahead], band=band,
+                          **({} if size is None else {"size": size}))
+    chart = _p(_image(chart_rel, chart_cm[0], chart_cm[1], chart_pic, "Price history"), after=80)
     # Every month of the forecast in the headline band, not just the first.
     #
     # Stefan, 23 November 2026, on a TDI Europe report: *"it shows only one month"*, and then
@@ -253,8 +280,7 @@ def forecast_docx(history, forecast, *, market: dict, currency: str, today_price
     figures = {"Today": today_price, "Priced": priced}
     for name, (_day, value, _low, _high) in zip(short_names, ahead):
         figures[name] = f"{value:,.0f}"
-    parts = _title_block(_market_line(market), "Forecast Report", today)
-    parts.append(_figures_table(figures, width))
+    parts = [_figures_table(figures, width)]
     if note:
         parts.append(_p(_run(note, size=SMALL, italic=True, color=GREY), after=160))
     parts.append(_h1("Price and forecast, last six months"))
@@ -263,7 +289,7 @@ def forecast_docx(history, forecast, *, market: dict, currency: str, today_price
     # second: the months behind first, then the months ahead. The two tables have the same four
     # columns at the same widths, so they read straight down as one run of time - where the
     # history alone used to run to two pages and push the forecast between them.
-    parts.append(_h1("The last three months", page_break=True))
+    parts.append(_h1("The last three months", page_break=numbers_on_a_new_page))
     parts.extend(_months_table(rows, currency, width, today))
     if ahead:
         parts.append(_h1("The forecast"))
@@ -277,4 +303,73 @@ def forecast_docx(history, forecast, *, market: dict, currency: str, today_price
         parts.append(_p(_run("The low and high are the range the forecast has held eight times in "
                              "ten when it was measured against what the market did.",
                              size=SMALL, italic=True, color=GREY), after=160))
+    said = [(name, value) for name, (_day, value, _lo, _hi) in zip(short_names, ahead)]
+    return parts, png, said
+
+
+def forecast_docx(history, forecast, *, market: dict, currency: str, today_price: str,
+                  priced: str, note: str = "", today: date | None = None,
+                  assets: Path = ASSETS) -> bytes:
+    """The Forecast page for one selection.
+
+    `forecast` is (period, value, low, high) per horizon, exactly the rows the page's chart draws.
+    """
+    today = today or date.today()
+    title = f"{_market_line(market)} Forecast"
+    body, png, _said = _forecast_body(history, forecast, currency=currency,
+                                      today_price=today_price, priced=priced, note=note,
+                                      today=today)
+    parts = _title_block(_market_line(market), "Forecast Report", today) + body
     return _package("".join(parts), title, png, assets)
+
+
+def monitor_docx(entries, *, heading: str, subtitle: str, edition: str, customer: str = "",
+                 today: date | None = None, assets: Path = ASSETS) -> bytes:
+    """The Price Monitor: the Forecast page's report for every market in `entries`, in one document.
+
+    CR-2026-11-26-01, fourth piece. Each entry is what `forecast_docx` takes for one market -
+    `market`, `history`, `forecast`, `currency`, `today_price`, `priced` and an optional `note` -
+    and is drawn by the same body, so a market reads here exactly as it does from the button.
+
+    What is added is the front: whose edition this is, and one table naming every market inside
+    with today's price and the forecast figures its own page carries. No figure is in that table
+    that is not on the market's page.
+    """
+    today = today or date.today()
+    width = _content_width()
+    parts = _title_block(heading, subtitle, today)
+    parts.append(_p(_run(" · ".join(part for part in (edition, customer) if part),
+                         size=BODY, bold=True, color=NAVY), after=200))
+    sections: list[str] = []
+    charts: dict[str, bytes] = {}
+    overview: list[list[str]] = []
+    for number, entry in enumerate(entries, 1):
+        name = f"Chart{number}"
+        body, png, said = _forecast_body(
+            entry.get("history"), entry.get("forecast"), currency=entry["currency"],
+            today_price=entry.get("today_price", ""), priced=entry.get("priced", ""),
+            note=entry.get("note", ""), today=today, chart_rel=f"rId{name}",
+            chart_pic=100 + number, numbers_on_a_new_page=False,
+            chart_cm=MONITOR_CHART_CM, chart_pixels=MONITOR_CHART_PIXELS)
+        charts[name] = png
+        line = _market_line(entry["market"])
+        # Each market starts a page under its own name, so a page handed on alone still says
+        # which market it is.
+        sections.append(_p(_run(line, size=TITLE, bold=True, color=NAVY), after=160,
+                           page_break=True, keep_next=True))
+        sections.extend(body)
+        overview.append([line, entry.get("today_price", "") or "-",
+                         " · ".join(f"{label} {value:,.0f}" for label, value in said) or "-"])
+    parts.append(_h1("In this edition"))
+    if overview:
+        parts.append(_table(["Market", "Today", "Forecast"], overview,
+                            [int(width * .40), int(width * .20), int(width * .40)]))
+        parts.append(_p(_run(f"{len(overview)} markets. Each has its own page: the price over the "
+                             "last six months, the last three months in figures, and the forecast.",
+                             size=SMALL, italic=True, color=GREY), after=160))
+    else:
+        parts.append(_p(_run("No market in this subscription carries a forecast today.")))
+    # Short, because the footer carries it on every page beside the page number, and the long one
+    # ran into "Page 4 of 95" with nothing between them.
+    title = f"Price Monitor, {edition}"
+    return _package("".join(parts + sections), title, None, assets, charts=charts)

@@ -14,10 +14,13 @@ except ModuleNotFoundError:  # Allows non-UI verification in environments withou
     st = None
 
 
-from raw_material_forecasting import mail
+from dataclasses import replace
+
+from raw_material_forecasting import mail, page_reports, price_monitor
 from raw_material_forecasting.platform_admin import products
 from raw_material_forecasting.platform_admin.access import chemical_allowed
 from raw_material_forecasting.platform_admin.models import (
+    is_on,
     ALL_OF_THE_COMPANYS,
     CommercialPackage,
     Company,
@@ -158,7 +161,8 @@ PEOPLE_NAVIGATION = ["Users", "Recipients & Domains"]
 # had been generated, the send control and what had been sent. Set it up, say when, send it, see
 # what happened.
 # Email, added v1.2.135: whether the application can send, a test, and every email it tried.
-DELIVERY_NAVIGATION = ["Profiles", "Schedule", "Send", "History", "Email"]
+# Price Monitor, added v1.2.136: the editions customers are owed - made, looked at and sent.
+DELIVERY_NAVIGATION = ["Price Monitor", "Profiles", "Schedule", "Send", "History", "Email"]
 CUSTOMER_REPORT_NAVIGATION = ["Period report", "Landed price calculator"]
 PRICE_NAVIGATION = ["What we hold", "Bring data in"]
 RELATIONSHIP_NAVIGATION = ["The study", "The working behind it"]
@@ -1479,6 +1483,214 @@ def _render_delivery_execution(service: PlatformAdminService) -> None:
                 st.error(message)
 
 
+# -------------------------------------------------------------------------------- the Price Monitor
+MONITOR_MARKETS = "Price Monitor markets"      # what `app.py` registers the Forecast page's data under
+
+
+def _monitor_recipients(service: PlatformAdminService, company_id: str) -> list[str]:
+    return sorted(recipient.email for recipient in service.repo.list_recipients(company_id)
+                  if recipient.active)
+
+
+def _make_monitor_issue(service: PlatformAdminService, subscription: Subscription,
+                        company: Company, edition: str, markets_for, by: str,
+                        replaces: price_monitor.MonitorIssue | None = None) -> None:
+    """Build this edition from the Forecast page's own data and keep it. Raises with the reason."""
+    if not by.strip():
+        raise ConfigurationError("Fill in 'Made by' first. Nothing was made.")
+    if not callable(markets_for):
+        raise ConfigurationError("The market data is not connected here. Nothing was made.")
+    # Eleven minutes for 46 markets on the first real edition: every market's forecast is asked
+    # of the engine. A bar that moves and names the market it is on is the difference between
+    # waiting and wondering whether to press again.
+    bar = st.progress(0.0, text="Finding the markets this product covers ...")
+
+    def tell(done: int, of: int, name: str) -> None:
+        bar.progress(min(done / max(of, 1), 1.0), text=f"{done} of {of}: {name}")
+
+    try:
+        found = markets_for(service.subscription_scope(subscription), tell)
+    finally:
+        bar.empty()
+    if found is None:
+        raise ConfigurationError("The market data could not be read just now. Nothing was made; "
+                                 "try again in a minute.")
+    now = datetime.now(timezone.utc)
+    reasons = [(one, price_monitor.why_left_out(one.get("forecast"), now.date())) for one in found]
+    entries = [one for one, reason in reasons if reason is None]
+    left_out = "; ".join(
+        " · ".join(str(value) for value in one["market"].values()) + f" ({reason})"
+        for one, reason in reasons if reason is not None)
+    if not entries:
+        raise ConfigurationError("No market in this product carries a forecast for the months "
+                                 "ahead, so there is nothing to put in the report. Nothing was "
+                                 "made." + (f" Left out: {left_out}." if left_out else ""))
+    document = page_reports.monitor_docx(
+        entries, heading="Price Monitor", subtitle=price_monitor.subtitle(subscription),
+        edition=f"{edition} edition", customer=company.name, today=now.date())
+    if replaces is not None:
+        service.repo.update_monitor_issue(replace(replaces, status=price_monitor.REPLACED))
+    service.repo.add_monitor_issue(price_monitor.MonitorIssue(
+        issue_id=f"mon-{uuid4().hex[:12]}", subscription_id=subscription.subscription_id,
+        company_id=company.company_id, edition=edition,
+        title=f"Price Monitor, {price_monitor.subtitle(subscription)}, {edition}",
+        file_name=price_monitor.file_name(company.name, subscription, edition),
+        markets=len(entries), size_bytes=len(document), status=price_monitor.MADE,
+        made_at=now, made_by=by.strip(),
+        note=f"Left out: {left_out}" if left_out else ""), document)
+
+
+def _send_monitor_issue(service: PlatformAdminService, subscription: Subscription,
+                        issue: price_monitor.MonitorIssue, to: list[str], by: str) -> None:
+    if not by.strip():
+        raise ConfigurationError("Fill in 'Sent by' first. Nothing was sent.")
+    document = service.repo.monitor_issue_content(issue.issue_id)
+    if not document:
+        raise ConfigurationError("The document for this edition could not be read. Nothing was sent.")
+    made = mail.mailer_for(service.repo).send(
+        to, subject=price_monitor.email_subject(subscription, issue.edition),
+        body=price_monitor.email_body(subscription, issue.edition, issue.markets),
+        purpose="Price Monitor", sent_by=by, company_id=issue.company_id,
+        attachments=[mail.Attachment(issue.file_name, document, price_monitor.DOCX)])
+    if made.status != mail.ACCEPTED:
+        raise ConfigurationError(f"{made.error} Nothing was sent.")
+    service.repo.update_monitor_issue(replace(
+        issue, status=price_monitor.SENT, sent_at=made.sent_at, sent_by=by.strip(),
+        recipients=made.recipients, mail_id=made.mail_id))
+
+
+def _monitor_panel(service: PlatformAdminService, subscription: Subscription, company: Company,
+                   edition: str, issue: price_monitor.MonitorIssue | None, markets_for) -> None:
+    """What can be done with one customer's edition, by the state it is in."""
+    mark = form_mark(subscription.subscription_id)
+    st.markdown(f"#### {company.name}: {edition} edition")
+    if issue is None or issue.status == price_monitor.HELD:
+        if issue is not None:
+            st.info(f"Held back by {issue.sent_by or issue.made_by}. Making it again issues it "
+                    f"after all.")
+        st.write("Making it reads the forecast for every market this product covers. That can "
+                 "take a minute or two.")
+        by = st.text_input("Made by", value="HTC Platform Admin", key=f"monitor_by_{mark}")
+        if st.button(f"Make the {edition} report", type="primary", key=f"monitor_make_{mark}"):
+            with st.spinner("Reading the forecasts and writing the report ..."):
+                _safe_action(lambda: _make_monitor_issue(
+                    service, subscription, company, edition, markets_for, by, replaces=issue),
+                    done=f"The {edition} report for {company.name} is made. Open it below "
+                         f"before sending it.")
+        return
+
+    st.write(f"Made on {issue.made_at:%d %B %Y at %H:%M} UTC by {issue.made_by}: "
+             f"{issue.markets} markets, {issue.size_bytes / 1_000_000:.1f} MB.")
+    if issue.note:
+        st.warning(f"{issue.note}. These markets' forecasts need looking at on the Forecast page; "
+                   f"the customer is not sent them.")
+    if issue.size_bytes > mail.ATTACHMENTS_LIMIT_BYTES:
+        st.warning(f"This edition is larger than one email carries "
+                   f"({mail.ATTACHMENTS_LIMIT_BYTES / 1_000_000:.1f} MB). It can be opened here "
+                   f"and sent by hand; the Send button will be refused.")
+    document = service.repo.monitor_issue_content(issue.issue_id)
+    if document:
+        st.download_button("Open the report (Word)", data=document, file_name=issue.file_name,
+                           mime=price_monitor.DOCX, key=f"monitor_open_{issue.issue_id}")
+    if issue.status == price_monitor.SENT:
+        st.success(f"Sent on {issue.sent_at:%d %B %Y at %H:%M} UTC by {issue.sent_by} to "
+                   + ", ".join(issue.recipients) + ".")
+        return
+
+    to = _monitor_recipients(service, company.company_id)
+    mailer = mail.mailer_for(service.repo)
+    st.markdown("**The email it goes in**")
+    st.text(f"From: {mailer.sender_address}\nTo: {', '.join(to) or '(nobody yet)'}\n"
+            f"Subject: {price_monitor.email_subject(subscription, edition)}\n"
+            f"Attached: {issue.file_name}\n\n"
+            + price_monitor.email_body(subscription, edition, issue.markets))
+    if not to:
+        st.warning("This customer has no recipient, so there is nobody to send it to. Add one "
+                   "under People, Recipients & Domains.")
+    if not mailer.configured:
+        st.warning("The application cannot send email yet. See Deliveries, Email.")
+    by = st.text_input("Sent by", value="HTC Platform Admin", key=f"monitor_sender_{mark}")
+    send_col, hold_col, again_col = st.columns(3)
+    with send_col:
+        if st.button(f"Send to {len(to)} recipient{'' if len(to) == 1 else 's'}", type="primary",
+                     key=f"monitor_send_{mark}", disabled=not to or not mailer.configured):
+            _safe_action(lambda: _send_monitor_issue(service, subscription, issue, to, by),
+                         done=f"The {edition} report was sent to {', '.join(to)}.")
+    with hold_col:
+        if st.button("Hold this edition back", key=f"monitor_hold_{mark}"):
+            _safe_action(lambda: service.repo.update_monitor_issue(replace(
+                issue, status=price_monitor.HELD, sent_by=by.strip() or "HTC Platform Admin")),
+                done=f"The {edition} report for {company.name} is held back. Nothing was sent.")
+    with again_col:
+        if st.button("Make it again", key=f"monitor_again_{mark}"):
+            with st.spinner("Reading the forecasts and writing the report ..."):
+                _safe_action(lambda: _make_monitor_issue(
+                    service, subscription, company, edition, markets_for, by, replaces=issue),
+                    done=f"The {edition} report for {company.name} was made again.")
+
+
+def _render_price_monitor(service: PlatformAdminService, markets_for=None) -> None:
+    """The editions customers are owed: made here, looked at, then sent.
+
+    CR-2026-11-26-01, fourth piece. Stefan, 26 November 2026, on what the Monitor's report is:
+    *"you can use the forecast report as per the button on the forecast page"*. So an edition is
+    that report for every market the customer's product covers, in one Word document.
+    """
+    st.subheader("Price Monitor")
+    st.caption("An edition is the Forecast page's report for every market a customer's Price "
+               "Monitor covers, in one Word document. It is made here, looked at, and then sent "
+               "to the customer's recipients. Nothing is sent by itself: a person makes and sends "
+               "each edition, and this page says which are owed.")
+    now = datetime.now(timezone.utc)
+    companies = _company_map(service)
+    held = [one for one in service.repo.list_subscriptions()
+            if one.product == products.PRICE_MONITOR and one.is_active(now)
+            and one.company_id in companies and is_on(companies[one.company_id], at=now)]
+    issues = service.repo.list_monitor_issues()
+    if not held:
+        st.info("No customer holds the Price Monitor today. It is given under Subscriptions, "
+                "Products.")
+    else:
+        owed = {one.subscription_id: price_monitor.edition_of(one, now.date()) for one in held}
+        current = {one.subscription_id: price_monitor.current_issue(
+            issues, one.subscription_id, owed[one.subscription_id]) for one in held}
+        st.markdown("**Editions owed now**")
+        opened = clicked_record(
+            [{"Customer": companies[one.company_id].name,
+              "Edition": owed[one.subscription_id],
+              "Every": "Quarter" if one.edition == products.QUARTERLY else "Month",
+              "Material group": products.group(one.material_group).name,
+              "Regions": _region_names(one.regions),
+              "Owed since": price_monitor.due_since(one, now.date()),
+              "State": price_monitor.STATE_WORDS[
+                  current[one.subscription_id].status if current[one.subscription_id] else None],
+              "Recipients": len(_monitor_recipients(service, one.company_id))}
+             for one in held],
+            [one.subscription_id for one in held], key="monitor")
+        chosen = next((one for one in held if one.subscription_id == opened), None)
+        if chosen is not None:
+            _monitor_panel(service, chosen, companies[chosen.company_id],
+                           owed[chosen.subscription_id], current[chosen.subscription_id],
+                           markets_for)
+
+    st.markdown("**Every edition made**")
+    if not issues:
+        st.info("No edition has been made yet.")
+        return
+    _monitor_history(issues, companies)
+
+
+def _monitor_history(issues, companies) -> None:
+    st.dataframe(pd.DataFrame([{
+        "Made": one.made_at, "Customer": getattr(companies.get(one.company_id), "name", one.company_id),
+        "Edition": one.edition, "Markets": one.markets,
+        "State": price_monitor.STATE_WORDS.get(one.status, one.status),
+        "Sent to": ", ".join(one.recipients), "Sent": one.sent_at, "Made by": one.made_by,
+        "Sent or held by": one.sent_by, "File": one.file_name, "Note": one.note}
+        for one in issues]),
+        width="stretch", hide_index=True)
+
+
 MAIL_STATUS_WORDS = {
     mail.ACCEPTED: "Accepted by Microsoft",
     mail.REFUSED: "Refused",
@@ -1819,7 +2031,9 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
         # Six blocks on one page until 30 October 2026, with no way to get past the first without
         # scrolling through all of them: set it up, say when, send it, see what happened.
         chosen = _within("Deliveries area", DELIVERY_NAVIGATION, "platform_admin_delivery_area")
-        if chosen == "Profiles":
+        if chosen == "Price Monitor":
+            _render_price_monitor(service, internal_renderers.get(MONITOR_MARKETS))
+        elif chosen == "Profiles":
             _render_delivery_profiles(service)
         elif chosen == "Schedule":
             _render_schedule_configuration(service)
