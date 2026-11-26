@@ -14,13 +14,17 @@ except ModuleNotFoundError:  # Allows non-UI verification in environments withou
     st = None
 
 
+from raw_material_forecasting.platform_admin import products
+from raw_material_forecasting.platform_admin.access import chemical_allowed
 from raw_material_forecasting.platform_admin.models import (
+    ALL_OF_THE_COMPANYS,
     CommercialPackage,
     Company,
     CompanyEntitlement,
     DeliveryProfile,
     EntitlementScope,
     Recipient,
+    Subscription,
     TemporaryEntitlement,
     UserAccess,
     is_deleted,
@@ -142,7 +146,12 @@ NAVIGATION = [OVERVIEW, *CUSTOMER_PAGES, *MARKET_PAGES]
 # delivery worker detached, so closing the console window leaves all three running and holding the
 # store (Stefan, 26 September 2026). It is not a destination, so it is not among the destinations.
 
-ACCESS_NAVIGATION = ["Package Templates", "Permanent Entitlements", "Temporary Entitlements"]
+# Products first (v1.2.133): it is what a customer bought, and from now on the ordinary way to
+# say what they may have. The three after it are the scope written by hand - still there, still
+# enforced, and where the trial lives (Stefan, 26 November 2026: "The trial is outside the
+# current subscriptions, do not put it under anything").
+ACCESS_NAVIGATION = ["Products", "Package Templates", "Permanent Entitlements",
+                     "Temporary Entitlements"]
 PEOPLE_NAVIGATION = ["Users", "Recipients & Domains"]
 # Delivery was six blocks stacked on one page: profiles, the schedule, the schedule monitor, what
 # had been generated, the send control and what had been sent. Set it up, say when, send it, see
@@ -615,6 +624,273 @@ def _render_permanent(service: PlatformAdminService) -> None:
         st.json(scope_to_dict(shown[0].scope))
 
 
+# ------------------------------------------------------------------------------------- the products
+# CR-2026-11-26-01, first piece of work. A product is chosen as it is sold - product, material
+# group, origin regions - and the page says what that costs and what it opens before it is saved.
+MARKETS_HELD = "Markets held"       # what `app.py` registers the engine's answer under
+
+
+def _money(amount: int) -> str:
+    return f"{products.CURRENCY} {amount:,}"
+
+
+def _chemical_name(code: str) -> str:
+    """A chemical as a person writes it. The store's list of names first, then the route graph's.
+
+    The display names were written for what we hold prices for. A feedstock we hold none for -
+    carbon monoxide, the xylenes - is on the route graph and not on that list, and came out as
+    its code.
+    """
+    from raw_material_forecasting.chemicals import display_chemical
+
+    name = display_chemical(code)
+    if name != code:
+        return name
+    node = products.route_graph().node(code)
+    # The graph's short name - "CO", "Cumene", "Naphtha" - which is what Chemical Relationships
+    # draws, so a feedstock reads the same here as on the page that shows where it sits.
+    return node.display_name if node is not None and node.display_name else code
+
+
+def _subscription_fee(one: Subscription) -> int | None:
+    try:
+        return products.fee(one.product, one.edition, one.material_group, len(one.regions))
+    except ValueError:
+        return None                 # a row from before a product or group was renamed
+
+
+def _subscription_words(one: Subscription) -> str:
+    try:
+        what = products.offer(one.product, one.edition).name
+        which = products.group(one.material_group).name
+    except ValueError:
+        what, which = f"{one.product} / {one.edition}", one.material_group
+    return f"{what}, {which}, {_region_names(one.regions)}"
+
+
+def _region_names(codes) -> str:
+    known = [region.name for region in products.REGIONS if region.code in set(codes)]
+    unknown = sorted(code for code in codes if code not in {r.code for r in products.REGIONS})
+    return ", ".join([*known, *unknown]) or "no region"
+
+
+def _subscription_kind(service: PlatformAdminService, company_id: str) -> RecordKind:
+    return RecordKind(
+        noun="product", gone="ended",
+        id_of=lambda s: s.subscription_id,
+        name_of=_subscription_words,
+        to_row=lambda s: {
+            "subscription_id": s.subscription_id, "product": s.product, "edition": s.edition,
+            "material_group": s.material_group, "regions": cell_list(sorted(s.regions)),
+            "effective_from": s.effective_from.date().isoformat(),
+            "effective_to": s.effective_to.date().isoformat() if s.effective_to else ""},
+        from_row=lambda row: Subscription(
+            required(row.get("subscription_id"), "subscription_id"), company_id,
+            required(row.get("product"), "product").upper(),
+            (read_text(row.get("edition")) or products.ANNUAL).upper(),
+            required(row.get("material_group"), "material_group").upper(),
+            frozenset(code.upper() for code in read_list(row.get("regions"))),
+            _as_utc(read_date(row.get("effective_from")) or date.today()),
+            _as_utc(read_date(row.get("effective_to"))) if read_date(row.get("effective_to")) else None,
+        ),
+        save=lambda record, actor, reason: service.save_subscription(
+            record, actor=actor, reason=reason),
+    )
+
+
+def _price_state(markets, chemical: str, region_code: str) -> str:
+    """Whether we hold a price for one material in one region: now, only an old one, or none."""
+    if markets is None:
+        return "Not known here"
+    mine = [priced for code, geography, priced in markets
+            if products.region_of(geography) == region_code
+            and chemical_allowed(code, frozenset({chemical}))]
+    if any(mine):
+        return "Current price"
+    return "Old prices only" if mine else "No price held"
+
+
+def _what_it_opens(group_code: str, region_codes: list[str], markets) -> None:
+    """What the choice on screen would give a customer today, counted from what we hold.
+
+    Stefan, 26 November 2026, on Rigid Foam with two of its three materials unpriced: sell it as
+    it is. Then the place it is sold has to say what "as it is" is, material by material, so the
+    customer hears it from HTC and not from an empty page.
+    """
+    held = products.group(group_code)
+    regions = [region for region in products.REGIONS if region.code in set(region_codes)]
+    st.markdown("**What this opens today**")
+    if markets is None:
+        st.caption("The market data could not be read from here, so this lists what the choice "
+                   "names and not which of it holds a price.")
+    if not held.materials:
+        st.write(held.said)
+        if markets is not None:
+            for region in regions:
+                chemicals = {code for code, geography, priced in markets
+                             if priced and products.region_of(geography) == region.code}
+                st.write(f"{region.name}: {len(chemicals)} chemicals with a current price.")
+        return
+    st.dataframe(pd.DataFrame([
+        {"Material": _chemical_name(material),
+         **{region.name: _price_state(markets, material, region.code) for region in regions}}
+        for material in held.materials]), hide_index=True, width="stretch")
+    feed = products.feedstocks(group_code)
+    rows = [{"Feedstock": _chemical_name(code),
+             **{region.name: _price_state(markets, code, region.code) for region in regions}}
+            for code in feed]
+    priced = sum(1 for row in rows if "Current price" in row.values())
+    said = f"Related feedstocks: {len(feed)} belong to these materials."
+    if markets is not None:
+        said += f" {priced} of them hold a current price in the regions chosen."
+    st.write(said)
+    with st.expander("The feedstocks by name"):
+        st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
+
+
+def _where_each_market_sits(markets) -> None:
+    """Which of the store's market names lies in which region. Drawn so that it can be corrected.
+
+    Stefan named the three regions; which market belongs to which is a reading, and a market the
+    store holds under a name no region lists is opened for nobody. This is where that shows.
+    """
+    held = sorted({geography for _code, geography, _priced in markets}) if markets is not None else None
+    names = held if held is not None else sorted(
+        {name for region in products.REGIONS for name in region.geographies}
+        | set(products.HELD_BACK_FOR_MEA))
+    rows: dict[str, list[str]] = {}
+    for name in names:
+        rows.setdefault(products.where(name), []).append(name)
+    order = [*(region.name for region in products.REGIONS), "Held back for MEA", "No region"]
+    st.dataframe(pd.DataFrame([
+        {"Region": where, "Markets": ", ".join(rows[where]),
+         "Sold": "Yes" if where in {region.name for region in products.REGIONS} else "No"}
+        for where in order if where in rows]), hide_index=True, width="stretch")
+    if "No region" in rows:
+        st.warning("Held in the store and in no region, so no product opens them: "
+                   + ", ".join(rows["No region"]) + ".")
+    if held is None:
+        st.caption("The market data could not be read from here; these are the names the "
+                   "regions are made of, not the ones the store holds.")
+
+
+def _price_list() -> None:
+    st.caption("US dollars per company per year, as on the deck's pricing pages. Held for "
+               "reference: nothing is invoiced from here.")
+    st.dataframe(pd.DataFrame(products.price_list()), hide_index=True, width="stretch")
+
+
+def _render_products(service: PlatformAdminService, markets_held=None) -> None:
+    st.subheader("Products")
+    st.caption("What a customer bought: a product, a material group and the origin regions. "
+               "The fee comes from the price list and what it opens is worked out from the choice. "
+               "A product is added to whatever the customer has under the entitlements beside "
+               "this page; the trial is one of those and is not a product.")
+    company_id = _select_company(service, "product_company")
+    if not company_id:
+        return
+    company = service.repo.get_company(company_id)
+    held = service.repo.list_subscriptions(company_id)
+    markets = markets_held() if callable(markets_held) else None
+    now = datetime.now(timezone.utc)
+
+    in_force = [one for one in held if one.is_active(now)]
+    if in_force:
+        total = sum(fee for fee in map(_subscription_fee, in_force) if fee is not None)
+        st.write(f"In force today: {len(in_force)} "
+                 f"{'product' if len(in_force) == 1 else 'products'}, {_money(total)} a year by "
+                 f"the price list.")
+    access = [one for one in in_force if one.product == products.DIRECT_ACCESS]
+    if len(access) > 1:
+        st.warning("This customer holds Direct Access more than once. In the application the "
+                   "groups and the regions are joined: every group held is open in every region "
+                   "held, not each group in its own regions only.")
+
+    offers = [offer.key for offer in products.OFFERS]
+    groups = [group.code for group in products.GROUPS]
+    regions = [region.code for region in products.REGIONS]
+
+    def form(editing: Subscription | None) -> None:
+        mark = form_mark(editing.subscription_id if editing else None)
+        # Not an `st.form`: inside one nothing is worked out until Save, and the point of this
+        # page is to see the fee and what the choice opens BEFORE saving it.
+        editing_key = f"{editing.product}:{editing.edition}" if editing else None
+        chosen = st.selectbox(
+            "Product", offers, key=f"sub_offer_{mark}",
+            index=offers.index(editing_key) if editing_key in offers else 0,
+            format_func=lambda key: next(o.name for o in products.OFFERS if o.key == key))
+        offer = next(o for o in products.OFFERS if o.key == chosen)
+        st.caption(offer.delivers + ".")
+        group_code = st.selectbox(
+            "Material group", groups, key=f"sub_group_{mark}",
+            index=groups.index(editing.material_group) if editing and editing.material_group in groups else 0,
+            format_func=lambda code: products.group(code).name)
+        st.caption(products.group(group_code).said)
+        region_codes = st.multiselect(
+            "Origin regions", regions, key=f"sub_regions_{mark}",
+            default=[code for code in regions if editing and code in editing.regions],
+            format_func=lambda code: products.region(code).name)
+        from_col, to_col = st.columns(2)
+        with from_col:
+            effective_from = st.date_input(
+                "Starts on", key=f"sub_from_{mark}",
+                value=editing.effective_from.date() if editing else date.today())
+        with to_col:
+            open_ended = st.checkbox(
+                "No end date", key=f"sub_open_{mark}",
+                value=bool(editing and editing.effective_to is None))
+            effective_to = st.date_input(
+                "Ends on", key=f"sub_to_{mark}", disabled=open_ended,
+                value=(editing.effective_to.date() if editing and editing.effective_to
+                       else effective_from + timedelta(days=365)))
+
+        if region_codes:
+            fee = products.fee(offer.product, offer.edition, group_code, len(region_codes))
+            st.metric("Annual fee by the price list", _money(fee),
+                      help="US dollars per company per year. For reference: nothing is invoiced "
+                           "from here.")
+            if not products.DELIVERED_TODAY[offer.product]:
+                st.warning(products.NOT_DELIVERED_YET[offer.product])
+            _what_it_opens(group_code, region_codes, markets)
+        else:
+            st.info("Choose at least one origin region to see the fee and what it opens.")
+        ends = None if open_ended else effective_to
+        if company and company.contract_effective_to and (ends is None or ends > company.contract_effective_to):
+            st.warning(f"This customer's contract ends on {company.contract_effective_to}. "
+                       f"Sign-in stops on that day, whatever date this product runs to.")
+
+        actor, reason = _reason_fields(f"sub_{mark}")
+        if st.button("Save changes" if editing else "Add this product", type="primary",
+                     key=f"sub_save_{mark}"):
+            _safe_action(lambda: service.save_subscription(
+                Subscription(
+                    editing.subscription_id if editing else f"sub-{company_id}-{uuid4().hex[:8]}",
+                    company_id, offer.product, offer.edition, group_code,
+                    frozenset(region_codes), _as_utc(effective_from),
+                    _as_utc(ends) if ends else None),
+                actor=actor, reason=reason))
+
+    def listed(one: Subscription) -> dict:
+        fee = _subscription_fee(one)
+        try:
+            what, which = products.offer(one.product, one.edition).name, products.group(one.material_group).name
+        except ValueError:
+            what, which = f"{one.product} / {one.edition}", one.material_group
+        return {"Product": what, "Material group": which, "Regions": _region_names(one.regions),
+                "Annual fee": _money(fee) if fee is not None else "not on the price list",
+                "From": one.effective_from.date(),
+                "To": one.effective_to.date() if one.effective_to else None,
+                "In force": "Yes" if one.is_active(now) else "No"}
+
+    record_tabs(_subscription_kind(service, company_id), held, form, deactivate=service.deactivate,
+                key=f"product_{company_id}", listed=listed)
+
+    with st.expander("Price list"):
+        _price_list()
+    with st.expander("Where each market sits"):
+        _where_each_market_sits(markets)
+
+
 TEMPORARY_REASONS = ["Trial", "Evaluation", "Commercial Exception"]
 
 
@@ -717,12 +993,23 @@ def _render_users(service: PlatformAdminService) -> None:
                 index=ROLE_OPTIONS.index(editing.role) if editing and editing.role in ROLE_OPTIONS else 0)
             active = st.checkbox("Active", value=editing.active if editing else True,
                                  key=f"user_active_{mark}")
+            # v1.2.133. A customer who bought a product holds its materials and their feedstocks
+            # by code, and the fields below offer no feedstock: ticked, the user is given whatever
+            # the company holds, today and after any change to it, and the fields are not read.
+            everything = st.checkbox(
+                "Sees everything the company holds", key=f"user_all_{mark}",
+                value=editing.scope == ALL_OF_THE_COMPANYS if editing else True,
+                help="The usual choice. The user sees what the company's products and "
+                     "entitlements open, no more, and follows them when they change. Untick to "
+                     "give this user less, with the fields below.")
             scope = _scope_editor(f"user_{mark}", editing.scope if editing else None)
             actor, reason = _reason_fields(f"user_{mark}")
             if st.form_submit_button("Save changes" if editing else "Create user", type="primary"):
                 _safe_action(lambda: service.create_user(
                     UserAccess((editing.user_id if editing else user_id).strip(), company_id,
-                               email.strip(), role, scope, active), actor=actor, reason=reason
+                               email.strip(), role,
+                               ALL_OF_THE_COMPANYS if everything else scope, active),
+                    actor=actor, reason=reason
                 ))
 
     record_tabs(_user_kind(service, company_id), users, form, deactivate=service.deactivate,
@@ -1402,11 +1689,15 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
         _render_companies(service)
         return
     if section == "Subscriptions":
+        area = _within("Subscriptions area", ACCESS_NAVIGATION, "platform_admin_access_area")
+        if area == "Products":
+            _render_products(service, internal_renderers.get(MARKETS_HELD))
+            return
         {
             "Package Templates": _render_packages,
             "Permanent Entitlements": _render_permanent,
             "Temporary Entitlements": _render_temporary,
-        }[_within("Subscriptions area", ACCESS_NAVIGATION, "platform_admin_access_area")](service)
+        }[area](service)
         return
     if section == "People":
         {

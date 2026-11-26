@@ -7356,8 +7356,29 @@ def _open_questions_waiting() -> int:
                if str(case.get("status") or "").upper() not in {"CLOSED", "RULED_OUT"})
 
 
+def _markets_held_for_platform_admin() -> list[tuple[str, str, bool]] | None:
+    """Every (chemical, market) we publish, and whether Current Market offers it today.
+
+    The Products page asks this so that a product is sold with its contents in view: which of a
+    group's materials hold a current price in the regions being bought (CR-2026-11-26-01). It is
+    the customer pages' own answer - the same identities, the same rule - so what the admin is
+    told a customer will see is what the customer sees. None when the market data cannot be read.
+    """
+    snapshot = _load_step6_snapshot(readings="index")
+    if snapshot is None:
+        return None
+    identities = [dict(row) for row in snapshot.identities if is_published_market(row)]
+    current = {(one[0], one[1]) for one in customer_catalogue.offered(
+        identities, snapshot.observations, customer_catalogue.CURRENT, sources=snapshot.sources)}
+    held = {(str(row.get("product_family") or "").strip(),
+             str(row.get("market_geography") or "").strip()) for row in identities}
+    return sorted((chemical, geography, (chemical, geography) in current)
+                  for chemical, geography in held if chemical and geography)
+
+
 def _platform_admin_internal_renderers() -> dict[str, object]:
     return {
+        "Markets held": _markets_held_for_platform_admin,
         "Import": render_document_import,
         "Reports": render_period_report,
         "Data & Sources": lambda: render_data_sources(None),

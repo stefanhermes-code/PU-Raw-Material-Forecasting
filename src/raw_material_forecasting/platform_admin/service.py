@@ -13,17 +13,20 @@ from .models import (
     DeliveryProfile,
     EntitlementScope,
     Recipient,
+    Subscription,
     TemporaryEntitlement,
     UserAccess,
     UserCredential,
     RuntimeAccess,
     PlatformAdminCredential,
-    effective_scope,
     intersect_scope,
+    merge_scope,
     scope_contains,
     scope_to_dict,
     switched_off,
+    user_scope_fits,
 )
+from . import products
 from .repository import PlatformAdminRepository
 from .auth import (
     PLATFORM_ADMIN_EMAIL,
@@ -230,11 +233,68 @@ class PlatformAdminService:
         )
         return entitlement
 
+    def save_subscription(self, subscription: Subscription, *, actor: str, reason: str) -> Subscription:
+        """Record a product a customer holds. Refuses anything the price list does not price."""
+        self._who_and_why(actor, reason)
+        if not self.repo.get_company(subscription.company_id):
+            raise ConfigurationError(f"unknown company: {subscription.company_id}")
+        if not subscription.subscription_id.strip():
+            raise ConfigurationError("a subscription needs an ID")
+        if not subscription.regions:
+            raise ConfigurationError("Choose at least one origin region. Nothing was changed.")
+        try:
+            products.fee(subscription.product, subscription.edition, subscription.material_group,
+                         len(subscription.regions))
+            for code in subscription.regions:
+                products.region(code)
+        except ValueError as exc:
+            raise ConfigurationError(f"{exc}. Nothing was changed.") from exc
+        if subscription.effective_to is not None and subscription.effective_to <= subscription.effective_from:
+            raise ConfigurationError("A subscription must end after it starts. Nothing was changed.")
+        old = self.repo.get_subscription(subscription.subscription_id)
+        if old is not None and old.company_id != subscription.company_id:
+            raise ConfigurationError("that subscription ID belongs to another customer")
+        self.repo.upsert_subscription(subscription)
+        self._audit(
+            company_id=subscription.company_id, entity_type="subscription",
+            entity_id=subscription.subscription_id, action="UPDATE" if old else "CREATE",
+            actor=actor, old_value=old, new_value=subscription, reason=reason,
+        )
+        return subscription
+
+    def subscription_scope(self, subscription: Subscription) -> EntitlementScope:
+        """What one product opens. Worked out, never stored: see `repository.subscriptions`."""
+        return products.scope_for(subscription.product, subscription.edition,
+                                  subscription.material_group, subscription.regions)
+
     def effective_company_scope(self, company_id: str, *, at: datetime | None = None) -> EntitlementScope:
+        """What a customer may see in the application at `at`.
+
+        Three sources, joined: the contractual entitlement, any temporary grant in force, and
+        every Direct Access subscription in force (v1.2.133). The Price Monitor and Forecast
+        Alerts are NOT joined in. They are sent to a customer; they open nothing in the
+        application, and a customer who holds Direct Access for Flexible Foam and the Monitor for
+        Rigid Foam has not bought Rigid Foam in the application (Stefan, 26 November 2026: the
+        products are sold separately).
+
+        One limit, stated because it is real: a scope is a list of chemicals and a list of
+        geographies, not pairs. Two Direct Access subscriptions for different groups in different
+        regions open each group in both regions. The Products page says so when it happens.
+        """
+        at = at or self._now()
         permanent = self.repo.get_company_entitlement(company_id)
-        if permanent is None:
-            raise ConfigurationError(f"company has no permanent entitlement: {company_id}")
-        return effective_scope(permanent, self.repo.list_temporary_entitlements(company_id), at=at or self._now())
+        held = [one for one in self.repo.list_subscriptions(company_id) if one.is_active(at)]
+        if permanent is None and not held:
+            raise ConfigurationError(
+                f"company has no entitlement and holds no product: {company_id}")
+        result = permanent.scope if permanent is not None and permanent.is_active(at) else EntitlementScope()
+        for temporary in self.repo.list_temporary_entitlements(company_id):
+            if temporary.is_active(at):
+                result = merge_scope(result, temporary.scope)
+        for one in held:
+            if one.product == products.DIRECT_ACCESS:
+                result = merge_scope(result, self.subscription_scope(one))
+        return result
 
 
     def resolve_user_access(self, email: str, *, at: datetime | None = None) -> RuntimeAccess:
@@ -342,7 +402,7 @@ class PlatformAdminService:
     def create_user(self, user: UserAccess, *, actor: str, reason: str) -> UserAccess:
         self._who_and_why(actor, reason)
         parent = self.effective_company_scope(user.company_id)
-        if not scope_contains(parent, user.scope):
+        if not user_scope_fits(parent, user.scope):
             raise EntitlementViolation("user scope exceeds the company's effective entitlement")
         old = self.repo.get_user(user.user_id)
         self.repo.upsert_user(user)
@@ -422,6 +482,7 @@ class PlatformAdminService:
         "CommercialPackage": ("commercial_package", "package_id", "upsert_package"),
         "CompanyEntitlement": ("company_entitlement", "entitlement_id", "set_company_entitlement"),
         "TemporaryEntitlement": ("temporary_entitlement", "entitlement_id", "upsert_temporary_entitlement"),
+        "Subscription": ("subscription", "subscription_id", "upsert_subscription"),
         "UserAccess": ("user", "user_id", "upsert_user"),
         "Recipient": ("recipient", "recipient_id", "upsert_recipient"),
         "DeliveryProfile": ("delivery_profile", "profile_id", "upsert_delivery_profile"),

@@ -1,5 +1,34 @@
 [
   {
+    "signal_id": "step6-550f2b7f-1e6c-4b11-b6ec-f3a7de974868",
+    "source_id": "longzhong_tdi",
+    "producer": "Wanhua Chemical",
+    "actor": "Wanhua Chemical",
+    "producer_named": true,
+    "chemical": "PURE_MDI",
+    "chemical_relationship": "SUBSTITUTE",
+    "chemical_relevance": "Competes with TDI, shares the phosgene chain",
+    "geography": "China",
+    "category": "PLANNED_MAINTENANCE",
+    "what_changed": "Wanhua Chemical took its pure MDI plant down for maintenance",
+    "source_headline": "[纯MDI]：万华化学(宁波)有限公司的MDI二期装置检修公告",
+    "announced_at": "2026-11-25",
+    "effective_from": null,
+    "effective_to": null,
+    "status": "ANNOUNCED",
+    "market_relevance": "Competes with TDI, shares the phosgene chain.",
+    "verification_status": "VERIFIED",
+    "source_url": "https://www.mysteel.com/oilchem/a/26112508/D3CFB2DCE9162908.html",
+    "source_date": "2026-11-25",
+    "evidence_tier": "NAMED_SINGLE_SOURCE",
+    "confidence": "SINGLE_SOURCE",
+    "corroborating_publishers": [
+      "MYSTEEL_LONGZHONG"
+    ],
+    "price_check": "NOT_APPLICABLE",
+    "evidence_note": "Reported by Longzhong, one source so far."
+  },
+  {
     "signal_id": "step6-d87febc2-2174-45c3-84e4-8212b25165a2",
     "source_id": "longzhong_tdi",
     "producer": "Wanhua Chemical",

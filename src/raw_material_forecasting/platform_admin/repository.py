@@ -17,6 +17,7 @@ from .models import (
     CompanyEntitlement,
     DeliveryProfile,
     Recipient,
+    Subscription,
     TemporaryEntitlement,
     UserAccess,
     UserCredential,
@@ -62,6 +63,20 @@ temporary_entitlements = Table(
     Column("reason", Text, nullable=False),
     Column("created_by", String, nullable=False),
     Column("approved_by", String, nullable=False),
+)
+# A product a customer holds (CR-2026-11-26-01). What was bought, in the words it was sold in;
+# the scope it opens is worked out from these, never stored beside them, so that a change to a
+# group's materials or a region's markets reaches every customer who holds it.
+subscriptions = Table(
+    "pa_subscription", metadata,
+    Column("subscription_id", String, primary_key=True),
+    Column("company_id", String, nullable=False),
+    Column("product", String, nullable=False),
+    Column("edition", String, nullable=False),
+    Column("material_group", String, nullable=False),
+    Column("regions_json", Text, nullable=False),
+    Column("effective_from", DateTime(timezone=True), nullable=False),
+    Column("effective_to", DateTime(timezone=True)),
 )
 users = Table(
     "pa_user", metadata,
@@ -316,6 +331,39 @@ class PlatformAdminRepository:
         with self.engine.connect() as conn:
             rows = conn.execute(select(temporary_entitlements).where(temporary_entitlements.c.company_id == company_id).order_by(temporary_entitlements.c.effective_from)).mappings().all()
         return [TemporaryEntitlement(r["entitlement_id"], r["company_id"], scope_from_dict(json.loads(r["scope_json"])), _as_utc(r["effective_from"]), _as_utc(r["effective_to"]), r["reason_type"], r["reason"], r["created_by"], r["approved_by"]) for r in rows]
+
+    def upsert_subscription(self, subscription: Subscription) -> None:
+        self._upsert(subscriptions, subscriptions.c.subscription_id, subscription.subscription_id, {
+            "subscription_id": subscription.subscription_id,
+            "company_id": subscription.company_id,
+            "product": subscription.product,
+            "edition": subscription.edition,
+            "material_group": subscription.material_group,
+            "regions_json": _set_json(subscription.regions),
+            "effective_from": subscription.effective_from,
+            "effective_to": subscription.effective_to,
+        })
+
+    @staticmethod
+    def _subscription(r) -> Subscription:
+        return Subscription(r["subscription_id"], r["company_id"], r["product"], r["edition"],
+                            r["material_group"], frozenset(json.loads(r["regions_json"])),
+                            _as_utc(r["effective_from"]), _as_utc(r["effective_to"]))
+
+    def get_subscription(self, subscription_id: str) -> Subscription | None:
+        with self.engine.connect() as conn:
+            r = conn.execute(select(subscriptions).where(
+                subscriptions.c.subscription_id == subscription_id)).mappings().first()
+        return self._subscription(r) if r else None
+
+    def list_subscriptions(self, company_id: str | None = None) -> list[Subscription]:
+        query = select(subscriptions).order_by(subscriptions.c.company_id,
+                                               subscriptions.c.effective_from)
+        if company_id is not None:
+            query = query.where(subscriptions.c.company_id == company_id)
+        with self.engine.connect() as conn:
+            rows = conn.execute(query).mappings().all()
+        return [self._subscription(r) for r in rows]
 
     def upsert_user(self, user: UserAccess) -> None:
         self._upsert(users, users.c.user_id, user.user_id, {

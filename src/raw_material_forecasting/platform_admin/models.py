@@ -67,6 +67,34 @@ class TemporaryEntitlement:
         return self.effective_from <= at < self.effective_to
 
 
+@dataclass(frozen=True)
+class Subscription:
+    """One product a customer holds: what was bought, for which group and regions, from when.
+
+    CR-2026-11-26-01. Until this there was one entitlement per customer and its scope was ticked by
+    hand, so nothing in the application knew what had been SOLD - Direct Access or the Price
+    Monitor, Flexible Foam or Full Chain, one region or three. A subscription is that sentence,
+    kept as it was said; `products.scope_for` works out what it opens.
+
+    A customer can hold several (Stefan, 26 November 2026: sold separately), which is why each
+    carries its own dates rather than borrowing the customer's contract dates.
+    """
+    subscription_id: str
+    company_id: str
+    product: str
+    edition: str
+    material_group: str
+    regions: frozenset[str]
+    effective_from: datetime
+    effective_to: datetime | None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "regions", _norm(self.regions))
+
+    def is_active(self, at: datetime) -> bool:
+        return self.effective_from <= at and (self.effective_to is None or at < self.effective_to)
+
+
 def _union_dimension(left: frozenset[str], right: frozenset[str]) -> frozenset[str]:
     if "*" in left or "*" in right:
         return frozenset({"*"})
@@ -127,6 +155,47 @@ def scope_contains(parent: EntitlementScope, child: EntitlementScope) -> bool:
         (parent.delivery_channels, child.delivery_channels),
     )
     return all(_dimension_contains(p, c) for p, c in dimensions)
+
+
+def user_scope_fits(company: EntitlementScope, user: EntitlementScope) -> bool:
+    """Whether a user's scope may be saved under this company. `*` on a user means "all of ours".
+
+    `scope_contains` refuses a `*` wherever the company's own scope is a list, and until
+    v1.2.133 that was the rule for a user too. It could not survive a company whose scope is
+    worked out from a product: Flexible Foam names four materials and thirty-five feedstocks by
+    code, the user form offers none of those codes, and `*` - the one way left to say "whatever
+    they bought" - was refused. A user of a product customer could not have been created at all.
+
+    A user's `*` cannot widen anything. What a user sees is `intersect_scope(company, user)`,
+    worked out at every sign-in, and `*` there takes the company's side. So `*` is allowed, and a
+    scope that NAMES something the company does not hold - a chemical, a market, a forecast
+    horizon longer than the company's - is refused exactly as before. The one scope that carries
+    a horizon it does not mean is `ALL_OF_THE_COMPANYS`, whose number stands for "the company's"
+    and is cut to it at sign-in.
+    """
+    if user.application_access and not company.application_access:
+        return False
+    if user != ALL_OF_THE_COMPANYS and user.forecast_horizon_months > company.forecast_horizon_months:
+        return False
+    dimensions = (
+        (company.features, user.features),
+        (company.chemicals, user.chemicals),
+        (company.geographies, user.geographies),
+        (company.incoterms, user.incoterms),
+        (company.packaging, user.packaging),
+        (company.report_formats, user.report_formats),
+        (company.delivery_frequencies, user.delivery_frequencies),
+        (company.delivery_channels, user.delivery_channels),
+    )
+    return all("*" in u or _dimension_contains(c, u) for c, u in dimensions)
+
+
+# The scope of a user who is to see whatever their company holds. See `user_scope_fits`.
+ALL_OF_THE_COMPANYS = EntitlementScope(
+    application_access=True, features=frozenset({"*"}), chemicals=frozenset({"*"}),
+    geographies=frozenset({"*"}), incoterms=frozenset({"*"}), packaging=frozenset({"*"}),
+    forecast_horizon_months=36, report_formats=frozenset({"*"}),
+    delivery_frequencies=frozenset({"*"}), delivery_channels=frozenset({"*"}))
 
 from dataclasses import asdict
 from datetime import date
@@ -214,7 +283,7 @@ def is_on(record: Any, *, at: datetime) -> bool:
     """Whether this record is in force. The one reader of the seven different ways of being off."""
     if isinstance(record, Company):
         return record.status not in COMPANY_STATUS_OFF
-    if isinstance(record, (CompanyEntitlement, TemporaryEntitlement)):
+    if isinstance(record, (CompanyEntitlement, TemporaryEntitlement, Subscription)):
         return record.is_active(at)
     return bool(getattr(record, "active", True))
 
@@ -233,7 +302,7 @@ def is_deleted(record: Any, *, at: datetime) -> bool:
     """
     if isinstance(record, Company):
         return record.status == CLOSED_COMPANY_STATUS
-    if isinstance(record, (CompanyEntitlement, TemporaryEntitlement)):
+    if isinstance(record, (CompanyEntitlement, TemporaryEntitlement, Subscription)):
         return record.effective_to is not None and record.effective_to <= at
     return not bool(getattr(record, "active", True))
 
@@ -248,7 +317,7 @@ def switched_off(record: Any, *, at: datetime) -> Any:
         return replace(record, status=CLOSED_COMPANY_STATUS)
     if isinstance(record, CompanyEntitlement):
         return replace(record, effective_to=at)
-    if isinstance(record, TemporaryEntitlement):
+    if isinstance(record, (TemporaryEntitlement, Subscription)):
         return replace(record, effective_to=at)
     if isinstance(record, (CommercialPackage, UserAccess, Recipient, DeliveryProfile)):
         return replace(record, active=False)
