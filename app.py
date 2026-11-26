@@ -7229,8 +7229,16 @@ def render_forecasts_available() -> None:
             "Price basis": display_basis(row.get("basis") or ""),
             "Price kind": price_kinds.display_kind(row.get("price_kind")),
         }
+        standing_in, refused = row.get("standing_in") or {}, row.get("refused") or {}
         for weeks in horizons:
-            entry[f"{weeks} weeks"] = methods.get(str(weeks)) or ""
+            method = methods.get(str(weeks)) or ""
+            # What the last nights produced, where it is not simply the method in force answering
+            # (v1.2.137). Until this the table named seven methods that had refused every night.
+            if str(weeks) in standing_in:
+                method = f"{standing_in[str(weeks)]} (standing in for {method})"
+            elif str(weeks) in refused:
+                method = f"{method} - REFUSED, nothing stood in"
+            entry[f"{weeks} weeks"] = method
         entry["Chosen on"] = str(row.get("chosen_at") or "")[:10]
         table.append(entry)
 
@@ -7239,6 +7247,14 @@ def render_forecasts_available() -> None:
     st.caption(f"{len(rows)} markets carry a forecast method; {with_all} of them at all "
                f"{len(horizons)} horizons. A blank cell is a horizon where nothing beat the flat "
                f"control.")
+    stood_in = sum(len(row.get("standing_in") or {}) for row in rows)
+    unanswered = sum(len(row.get("refused") or {}) for row in rows)
+    if stood_in or unanswered:
+        st.warning(
+            f"In the last four nights the method in force could not answer at {stood_in + unanswered} "
+            f"market-horizons. Another method from the same review stood in at {stood_in}; "
+            f"{unanswered} had no answer at all. They are marked in the table. The method in force "
+            f"is asked first again every night.")
     st.dataframe(frame, width="stretch", hide_index=True)
     st.download_button(
         "Download this table (CSV)",

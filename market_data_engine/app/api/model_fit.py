@@ -264,6 +264,54 @@ def forecasts_available(session_factory) -> list[dict[str, Any]]:
                                         str(row["basis"] or "")))
 
 
+def with_last_nights(session_factory, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The table of what is in force, with what the last few nights actually produced (v1.2.137).
+
+    The table said which method is IN FORCE and nothing about whether it answered. On
+    26 November 2026 seven markets had a method in force that refused every night, and the table
+    showed all seven as forecast. So the newest run for each market and horizon is read beside it:
+    `standing_in` names the method that answered where the one in force could not, and `refused`
+    carries the reason where nobody answered. Four days back is one more than a stored answer
+    stays current for, and only five plain columns are read - never a run's inputs.
+
+    Kept apart from `forecasts_available`, which is the selections and nothing else.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import select as _select
+
+    from app.db.models import GovernedForecastRunModel, MarketIdentityModel
+
+    since = datetime.now(timezone.utc) - timedelta(days=4)
+    newest: dict[tuple, tuple] = {}
+    with session_factory() as session:
+        recent = session.execute(_select(
+            GovernedForecastRunModel.identity_id, GovernedForecastRunModel.horizon_weeks,
+            GovernedForecastRunModel.status, GovernedForecastRunModel.method_key,
+            GovernedForecastRunModel.reason).where(GovernedForecastRunModel.created_at >= since)
+            .order_by(GovernedForecastRunModel.created_at.desc())).all()
+        market_of = {identity.id: (
+            str(identity.product_family or ""), str(identity.market_geography or ""),
+            str(identity.commercial_basis or ""), str(identity.observation_type or ""),
+            str(identity.packaging or "")) for identity in session.scalars(_select(MarketIdentityModel))}
+    for identity_id, weeks, status, method, reason in recent:
+        newest.setdefault((market_of.get(identity_id), int(weeks)), (status, method, reason or ""))
+    out = []
+    for row in rows:
+        key = (str(row.get("chemical") or ""), str(row.get("geography") or ""),
+               str(row.get("basis") or ""), str(row.get("price_kind") or ""),
+               str(row.get("packaging") or ""))
+        standing_in, refused = {}, {}
+        for weeks, in_force in (row.get("methods") or {}).items():
+            status, method, reason = newest.get((key, int(weeks)), ("", "", ""))
+            if status == "SUCCEEDED" and method != in_force and reason.startswith("standing in for "):
+                standing_in[str(weeks)] = method
+            elif status and status != "SUCCEEDED" and method == in_force:
+                refused[str(weeks)] = reason
+        out.append({**row, "standing_in": standing_in, "refused": refused})
+    return out
+
+
 def make_router(session_factory) -> APIRouter:
     router = APIRouter()
 
@@ -288,6 +336,6 @@ def make_router(session_factory) -> APIRouter:
 
     @router.get("/forecasts-available")
     def get_forecasts_available():
-        return forecasts_available(session_factory)
+        return with_last_nights(session_factory, forecasts_available(session_factory))
 
     return router

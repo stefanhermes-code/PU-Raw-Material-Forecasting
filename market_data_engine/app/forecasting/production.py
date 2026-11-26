@@ -18,7 +18,10 @@ For each series-horizon:
    version, the selection source, the review it rests on, the cutoff, and the conditional inputs used.
    **FAILED** (raised, declined, unavailable, or answered a different period) writes a FAILED run with
    the reason and the current automatic recommendation (Review Focus 3). No other method's number is
-   ever written under the failed method's name, and nothing switches automatically.
+   ever written under the failed method's name, and the selection itself is never switched.
+4. **A stand-in, for an automatic selection that could not answer** (v1.2.137). The methods the
+   same review ranked behind it are asked in that order, and the first that answers is stored - as
+   its OWN run, under its OWN name, saying whom it stands in for and why. See `_stand_in`.
 
 Every run is a `governed_forecast_run` row, keyed so a repeat on the same day for the same method and
 source is the same run, never a second one: append-only, like the vintages.
@@ -56,6 +59,11 @@ FAILED = "FAILED"
 NOT_GOVERNED = "NOT_GOVERNED"
 # A stored governed forecast older than this (issue date) is shown as not current (WP3 gate condition 4).
 STALE_AFTER_DAYS = 3
+# How many of the review's next-ranked methods are asked when the one in force cannot answer.
+# Each is a full forecast, some of them by a foundation model; five is every method most markets
+# have ranked, and a market none of five can answer has a problem a sixth will not solve.
+MAX_STAND_INS = 5
+STANDING_IN = "standing in for "          # how a stand-in's run says so, in `reason`
 
 
 @dataclass(frozen=True)
@@ -295,6 +303,95 @@ class ProductionForecastService:
                                         recommendation, {}, issue_date=issue_date)
         if rows is None:
             rows = forecast_rows(self.session_factory, identity.id, all_versions=True)
+        result = self._ask(identity, identity_key, horizon_weeks, issue_date, chosen, recommendation,
+                           frequency, rows, related_rows, feature_rows)
+        if result["status"] != FAILED or chosen.source is not SelectionSource.AUTOMATIC:
+            return result
+        return self._stand_in(identity, identity_key, horizon_weeks, issue_date, chosen, result,
+                              rows, related_rows, feature_rows) or result
+
+    def _stand_in(self, identity, identity_key, horizon_weeks, issue_date, chosen: InForce,
+                  refused: dict[str, Any], rows, related_rows, feature_rows) -> dict[str, Any] | None:
+        """The next method from the same review that can answer, stored as itself. None if none can.
+
+        WHY THIS EXISTS. On 26 November 2026 seven markets had an automatic selection that refused
+        every night. Four of them - benzene and toluene into Japan and Türkiye, ethylene glycol
+        into India - had been given a method that leans on South Korea's and Saudi Arabia's trade
+        series, and those series had stopped: "stale, not lagging", every night, at some or all
+        of three horizons. Nothing told anybody. The page fell back to a forecast it works out
+        itself, which counts its months from the newest price and not from today, so a customer
+        read a forecast for September in November. Stefan, shown it: *"Yes, do that"* - make the
+        job fall back to a method that can run.
+
+        WHAT IT DOES NOT DO. It does not change the selection: the method in force stays in force,
+        its refusal is recorded as it always was, and it is asked first again tomorrow, so the day
+        its related series come back it simply answers. It does not write anybody's number under
+        another's name: the stand-in's run and vintage carry the stand-in's own key and version,
+        and say whom they stand in for. And it does not touch an administrator's override: a
+        choice made by hand fails visibly, with the recommendation beside it, as it did before.
+
+        WHICH METHOD. The ones the selection's own review ranked on this market and horizon, in
+        that order, that may be selected at all - Production Eligible, not the flat control. The
+        same evidence that chose the first chooses the second. A method that was not ranked here
+        is not asked: it would be a forecast from a method nobody examined on this market.
+
+        A stand-in that cannot answer either is not recorded. The page shows the newest run for a
+        market, and a row for every method that declined would bury the one that mattered.
+        """
+        with self.session_factory() as session:
+            candidates = self._ranked_behind(session, identity.id, horizon_weeks, chosen)
+            frequencies = {method.id: examined_frequency(
+                session, InForce(method, chosen.source, chosen.review_id, "", method.id),
+                identity.id, horizon_weeks) for method in candidates}
+        why = str(refused.get("reason") or "")
+        for method in candidates[:MAX_STAND_INS]:
+            stand_in = InForce(method, chosen.source, chosen.review_id, chosen.reason, method.id)
+            answer = self._ask(identity, identity_key, horizon_weeks, issue_date, stand_in, None,
+                               frequencies.get(method.id), rows, related_rows, feature_rows,
+                               standing_in_for=(chosen.method.method_key, why))
+            if answer["status"] == SUCCEEDED:
+                log.warning("governed forecast for %s %sw: %s stands in for %s (%s)", identity_key,
+                            horizon_weeks, method.method_key, chosen.method.method_key, why[:200])
+                return answer
+        return None
+
+    def _ranked_behind(self, session, identity_id: str, horizon_weeks: int,
+                       chosen: InForce) -> list[ForecastMethod]:
+        """The other methods the selection's review ranked here, best first, that may be selected."""
+        if not chosen.review_id or chosen.method is None:
+            return []
+        from app.db.models import ModelFitResultModel
+        registry = ForecastMethodRegistry(session)
+        ranked = session.scalars(select(ModelFitResultModel).where(
+            ModelFitResultModel.review_id == chosen.review_id,
+            ModelFitResultModel.identity_id == identity_id,
+            ModelFitResultModel.horizon_weeks == int(horizon_weeks),
+            ModelFitResultModel.execution_status == SUCCEEDED,
+            ModelFitResultModel.rank.is_not(None)).order_by(ModelFitResultModel.rank))
+        out = []
+        for row in ranked:
+            method = registry.get_by_id(row.method_id)
+            if (method is not None and method.id != chosen.method.id and method.selectable
+                    and method.method_key in self.adapters):
+                out.append(method)
+        return out
+
+    def _ask(self, identity, identity_key, horizon_weeks, issue_date, chosen: InForce, recommendation,
+             frequency, rows, related_rows, feature_rows, *,
+             standing_in_for: tuple[str, str] | None = None) -> dict[str, Any]:
+        """Ask one method and record what it said. `chosen` is the method asked.
+
+        `standing_in_for` is (the method in force, why it refused) when `chosen` is a stand-in.
+        A stand-in's success is recorded like any other and says whom it stands in for; its
+        failure is returned and not recorded (`_stand_in` says why).
+        """
+        def fail(as_of: date, reason: str, inputs, version: str = "") -> dict[str, Any]:
+            if standing_in_for is not None:
+                return {"identity_key": identity_key, "horizon_weeks": horizon_weeks, "status": FAILED,
+                        "method_key": chosen.method.method_key, "reason": reason, "written": False}
+            return self._record_failure(identity, identity_key, horizon_weeks, as_of, chosen, reason,
+                                        recommendation, inputs, version=version, issue_date=issue_date)
+
         if chosen.method.kind == CONDITIONAL and related_rows is None:
             related_rows = all_rows(self.session_factory)
             feature_rows = load_feature_rows(self.session_factory, str(identity.product_family or "UNKNOWN"),
@@ -302,14 +399,10 @@ class ProductionForecastService:
         prepared = prepare(identity, rows, issue_date, frequency=frequency)
         method = chosen.method
         if prepared is None:
-            return self._record_failure(identity, identity_key, horizon_weeks, issue_date, chosen,
-                                        "no visible history at the issue date", recommendation, {},
-                                        issue_date=issue_date)
+            return fail(issue_date, "no visible history at the issue date", {})
         adapter = self.adapters.get(method.method_key)
         if adapter is None:
-            return self._record_failure(identity, identity_key, horizon_weeks, prepared.priced_to, chosen,
-                                        f"no runnable adapter for {method.method_key}", recommendation, {},
-                                        issue_date=issue_date)
+            return fail(prepared.priced_to, f"no runnable adapter for {method.method_key}", {})
         # The slot is what the selection and the stored run are keyed to; the lead is what the
         # method is actually asked for, so the answer lands past today rather than past the data.
         lead = lead_weeks(horizon_weeks, prepared.history.last_date, issue_date,
@@ -319,19 +412,21 @@ class ProductionForecastService:
         inputs = {**inputs, "slot_weeks": horizon_weeks, "lead_weeks": lead,
                   "periods_behind": periods_behind(prepared.history.last_date, issue_date,
                                                    prepared.history.frequency)}
+        if standing_in_for is not None:
+            inputs = {**inputs, "standing_in_for": standing_in_for[0],
+                      "refusal": standing_in_for[1][:500]}
         point = output.at(lead) if output.succeeded else None
         expected = period_after(prepared.history.last_date,
                                 steps_for(lead, prepared.history.frequency,
                                           prepared.history.offset_days)[0], prepared.history.frequency)
         if point is None:
             why = output.reason or f"{output.status.value}: no answer for {lead} weeks"
-            return self._record_failure(identity, identity_key, horizon_weeks, prepared.priced_to, chosen,
-                                        f"{output.status.value}: {why}", recommendation, inputs,
-                                        version=output.method_version, issue_date=issue_date)
+            return fail(prepared.priced_to, f"{output.status.value}: {why}", inputs,
+                        output.method_version)
         if point.period != expected:
-            return self._record_failure(identity, identity_key, horizon_weeks, prepared.priced_to, chosen,
-                                        f"answered period {point.period.isoformat()}; expected {expected.isoformat()}",
-                                        recommendation, inputs, version=output.method_version, issue_date=issue_date)
+            return fail(prepared.priced_to,
+                        f"answered period {point.period.isoformat()}; expected {expected.isoformat()}",
+                        inputs, output.method_version)
         # The third of these guards, and the one that was missing. This is the ONLY path that writes
         # a RELEASED vintage, which is the lane the pinned card reads, and all fifteen of the
         # released forecasts carrying a negative band came through here (measured, 18 November
@@ -340,9 +435,7 @@ class ProductionForecastService:
         anchor = prepared.history.points[-1][1] if prepared.history.points else None
         refusal = refuse_value(point.value, anchor, lead)
         if refusal:
-            return self._record_failure(identity, identity_key, horizon_weeks, prepared.priced_to, chosen,
-                                        f"implausible: {refusal}", recommendation, inputs,
-                                        version=output.method_version, issue_date=issue_date)
+            return fail(prepared.priced_to, f"implausible: {refusal}", inputs, output.method_version)
         return self._record_success(identity, identity_key, horizon_weeks, prepared, chosen, output, point, inputs)
 
     # ---------------------------------------------------------------- writing (append-only)
@@ -449,8 +542,8 @@ class ProductionForecastService:
                 run_key=key, identity_id=identity.id, identity_key=identity_key, horizon_weeks=int(horizon_weeks),
                 as_of=_as_datetime(as_of), method_id=chosen.method.id, method_key=chosen.method.method_key,
                 method_version=output.method_version, selection_source=chosen.source.value,
-                review_id=chosen.review_id, status=SUCCEEDED, reason="", vintage_id=vintage.id,
-                recommended_method_key=None, inputs=inputs)
+                review_id=chosen.review_id, status=SUCCEEDED, reason=_stand_in_note(inputs),
+                vintage_id=vintage.id, recommended_method_key=None, inputs=inputs)
             session.add(run)
             session.commit()
             return _run_dict(run) | {"written": True, "value": vintage.value, "period": point.period.isoformat()}
@@ -490,8 +583,15 @@ class ProductionForecastService:
             return _run_dict(run) | {"written": True}
 
 
+def _stand_in_note(inputs) -> str:
+    """ "standing in for X: why X refused", or "" for a run of the method in force itself."""
+    whom = str((inputs or {}).get("standing_in_for") or "")
+    return f"{STANDING_IN}{whom}: {(inputs or {}).get('refusal') or ''}"[:2000] if whom else ""
+
+
 def _run_dict(run: GovernedForecastRunModel) -> dict[str, Any]:
-    return {"identity_key": run.identity_key, "horizon_weeks": run.horizon_weeks,
+    return {"standing_in_for": (run.inputs or {}).get("standing_in_for") or None,
+            "identity_key": run.identity_key, "horizon_weeks": run.horizon_weeks,
             "as_of": run.as_of.date().isoformat() if run.as_of else None, "status": run.status,
             "method_key": run.method_key, "method_version": run.method_version,
             "selection_source": run.selection_source, "review_id": run.review_id, "reason": run.reason,
@@ -539,6 +639,7 @@ def produce_all(session_factory, *, issue_date: date | None = None,
         results.append(result)
         say(f"{key} {horizon}w: {result['status']} {result.get('method_key', '')} {result.get('reason', '')[:120]}")
     return {"issue_date": issue_date.isoformat(), "pairs": len(pairs), "results": results,
+            "stood_in": sum(1 for r in results if r.get("standing_in_for")),
             "succeeded": sum(1 for r in results if r["status"] == SUCCEEDED),
             "failed": sum(1 for r in results if r["status"] == FAILED)}
 
@@ -571,11 +672,18 @@ def latest_governed(session_factory, identity_key: str, horizons: Iterable[int] 
             entry: dict[str, Any] = {"in_force": {"method_key": in_force_key,
                                                   "source": chosen.source.value, "review_id": chosen.review_id}}
             # Only a run of the method NOW in force counts; a run of an earlier choice is history.
-            if run is None or run.method_key != in_force_key or run.selection_source != chosen.source.value:
+            # So does a run that stands in FOR the method now in force (v1.2.137): it was asked
+            # because that method could not answer, and it is the governed answer until it can.
+            stands_in_for = (run.inputs or {}).get("standing_in_for") if run is not None else None
+            if (run is None or run.selection_source != chosen.source.value
+                    or in_force_key not in (run.method_key, stands_in_for)):
                 entry["status"] = "PENDING"
                 entry["reason"] = "the method in force has not been run yet"
             else:
                 entry.update(_run_dict(run))
+                if stands_in_for:
+                    entry["standing_in"] = {"method_key": run.method_key, "for": in_force_key,
+                                            "because": (run.inputs or {}).get("refusal") or ""}
                 # How current the stored answer is (WP3 gate condition 4): the day it was ISSUED and the
                 # data date it stands on. The page must not present an old governed number as today's.
                 issued = run.created_at if run.created_at.tzinfo else run.created_at.replace(tzinfo=timezone.utc)
