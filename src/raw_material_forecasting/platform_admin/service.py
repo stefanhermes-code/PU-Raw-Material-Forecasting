@@ -267,8 +267,13 @@ class PlatformAdminService:
         return products.scope_for(subscription.product, subscription.edition,
                                   subscription.material_group, subscription.regions)
 
-    def effective_company_scope(self, company_id: str, *, at: datetime | None = None) -> EntitlementScope:
+    def effective_company_scope(self, company_id: str, *, at: datetime | None = None,
+                                contract_in_force: bool = True) -> EntitlementScope:
         """What a customer may see in the application at `at`.
+
+        `contract_in_force=False` leaves out what the customer's CONTRACT gives - the contractual
+        entitlement and the temporary grants - and keeps what their products give. A product runs
+        on its own dates (v1.2.134): see `resolve_user_access`.
 
         Three sources, joined: the contractual entitlement, any temporary grant in force, and
         every Direct Access subscription in force (v1.2.133). The Price Monitor and Forecast
@@ -287,10 +292,13 @@ class PlatformAdminService:
         if permanent is None and not held:
             raise ConfigurationError(
                 f"company has no entitlement and holds no product: {company_id}")
-        result = permanent.scope if permanent is not None and permanent.is_active(at) else EntitlementScope()
-        for temporary in self.repo.list_temporary_entitlements(company_id):
-            if temporary.is_active(at):
-                result = merge_scope(result, temporary.scope)
+        result = EntitlementScope()
+        if contract_in_force:
+            if permanent is not None and permanent.is_active(at):
+                result = permanent.scope
+            for temporary in self.repo.list_temporary_entitlements(company_id):
+                if temporary.is_active(at):
+                    result = merge_scope(result, temporary.scope)
         for one in held:
             if one.product == products.DIRECT_ACCESS:
                 result = merge_scope(result, self.subscription_scope(one))
@@ -304,10 +312,21 @@ class PlatformAdminService:
         company = self.repo.get_company(user.company_id)
         if company is None or company.status not in {"ACTIVE", "TRIAL"}:
             raise EntitlementViolation("the user's company is not active")
-        today = (at or self._now()).date()
-        if today < company.contract_effective_from or (company.contract_effective_to is not None and today > company.contract_effective_to):
+        # The contract dates decide what the CONTRACT gives: the contractual entitlement and any
+        # temporary grant. A product decides for itself, by its own start and end (v1.2.134).
+        #
+        # Until then the contract dates decided everything, and there is one pair of them per
+        # customer. A customer whose trial contract ran out in February and who bought Direct
+        # Access for a year in January would have been refused at the door in February, with a
+        # paid product in force - and two products with different terms could not be told apart
+        # at all (CR-2026-11-26-01, section 4.1; Stefan, 26 November 2026: sold separately).
+        at = at or self._now()
+        today = at.date()
+        in_contract = not (today < company.contract_effective_from or (
+            company.contract_effective_to is not None and today > company.contract_effective_to))
+        parent = self.effective_company_scope(user.company_id, at=at, contract_in_force=in_contract)
+        if not in_contract and not parent.application_access:
             raise EntitlementViolation("the company's contract is not active")
-        parent = self.effective_company_scope(user.company_id, at=at or self._now())
         scope = intersect_scope(parent, user.scope)
         if not scope.application_access:
             raise EntitlementViolation("application access is not included in the active entitlement")

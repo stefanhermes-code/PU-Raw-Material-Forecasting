@@ -360,6 +360,19 @@ def _commercial_decisions(service: PlatformAdminService, now: datetime) -> list[
                     "When": ends.isoformat(),
                     "In": f"{days} day{'' if days == 1 else 's'}",
                 })
+        # A product runs on its own dates (v1.2.134), so it runs out on its own date too - and
+        # for a customer who holds only products, this line is the only notice there is.
+        for held in service.repo.list_subscriptions(company.company_id):
+            if not held.is_active(now) or held.effective_to is None:
+                continue
+            days = (held.effective_to.date() - now.date()).days
+            if 0 <= days <= CONTRACT_NOTICE_DAYS:
+                waiting.append({
+                    "What": f"Product ends ({_subscription_words(held)})",
+                    "Who": company.name,
+                    "When": held.effective_to.date().isoformat(),
+                    "In": f"{days} day{'' if days == 1 else 's'}",
+                })
         for grant in service.repo.list_temporary_entitlements(company.company_id):
             if not grant.is_active(now):
                 continue
@@ -753,22 +766,26 @@ def _where_each_market_sits(markets) -> None:
 
     Stefan named the three regions; which market belongs to which is a reading, and a market the
     store holds under a name no region lists is opened for nobody. This is where that shows.
+
+    Written out as lines since v1.2.134. As a table, APAC's thirteen markets were one cell, cut
+    off after "South C" (seen on the live site, 26 November 2026) - the one row whose whole
+    purpose was to be read to the end.
     """
     held = sorted({geography for _code, geography, _priced in markets}) if markets is not None else None
     names = held if held is not None else sorted(
         {name for region in products.REGIONS for name in region.geographies}
         | set(products.HELD_BACK_FOR_MEA))
-    rows: dict[str, list[str]] = {}
+    placed: dict[str, list[str]] = {}
     for name in names:
-        rows.setdefault(products.where(name), []).append(name)
-    order = [*(region.name for region in products.REGIONS), "Held back for MEA", "No region"]
-    st.dataframe(pd.DataFrame([
-        {"Region": where, "Markets": ", ".join(rows[where]),
-         "Sold": "Yes" if where in {region.name for region in products.REGIONS} else "No"}
-        for where in order if where in rows]), hide_index=True, width="stretch")
-    if "No region" in rows:
+        placed.setdefault(products.where(name), []).append(name)
+    sold = [region.name for region in products.REGIONS]
+    for where in [*sold, "Held back for MEA", "No region"]:
+        if where in placed:
+            st.markdown(f"**{where}** ({'sold' if where in sold else 'not sold'}, "
+                        f"{len(placed[where])}): " + ", ".join(placed[where]))
+    if "No region" in placed:
         st.warning("Held in the store and in no region, so no product opens them: "
-                   + ", ".join(rows["No region"]) + ".")
+                   + ", ".join(placed["No region"]) + ".")
     if held is None:
         st.caption("The market data could not be read from here; these are the names the "
                    "regions are made of, not the ones the store holds.")
@@ -835,14 +852,18 @@ def _render_products(service: PlatformAdminService, markets_held=None) -> None:
             effective_from = st.date_input(
                 "Starts on", key=f"sub_from_{mark}",
                 value=editing.effective_from.date() if editing else date.today())
+        # The tick box is read before the date it switches off is drawn, and drawn after it:
+        # above "Ends on" it pushed that field a line below "Starts on" (seen on the live site).
+        open_ended = bool(st.session_state.get(
+            f"sub_open_{mark}", bool(editing and editing.effective_to is None)))
         with to_col:
-            open_ended = st.checkbox(
-                "No end date", key=f"sub_open_{mark}",
-                value=bool(editing and editing.effective_to is None))
             effective_to = st.date_input(
                 "Ends on", key=f"sub_to_{mark}", disabled=open_ended,
                 value=(editing.effective_to.date() if editing and editing.effective_to
                        else effective_from + timedelta(days=365)))
+        open_ended = st.checkbox(
+            "No end date", key=f"sub_open_{mark}",
+            value=bool(editing and editing.effective_to is None))
 
         if region_codes:
             fee = products.fee(offer.product, offer.edition, group_code, len(region_codes))
@@ -855,9 +876,11 @@ def _render_products(service: PlatformAdminService, markets_held=None) -> None:
         else:
             st.info("Choose at least one origin region to see the fee and what it opens.")
         ends = None if open_ended else effective_to
-        if company and company.contract_effective_to and (ends is None or ends > company.contract_effective_to):
-            st.warning(f"This customer's contract ends on {company.contract_effective_to}. "
-                       f"Sign-in stops on that day, whatever date this product runs to.")
+        if (offer.product == products.DIRECT_ACCESS and company and company.contract_effective_to
+                and (ends is None or ends > company.contract_effective_to)):
+            st.caption(f"This product runs on its own dates. The customer's contract ends on "
+                       f"{company.contract_effective_to}; after that day they keep what this "
+                       f"product opens and lose what their entitlements opened.")
 
         actor, reason = _reason_fields(f"sub_{mark}")
         if st.button("Save changes" if editing else "Add this product", type="primary",
@@ -982,6 +1005,20 @@ def _render_users(service: PlatformAdminService) -> None:
 
     def form(editing: UserAccess | None) -> None:
         mark = form_mark(editing.user_id if editing else None)
+        # Outside the form, so that ticking it acts at once: the scope fields are drawn only when
+        # it is unticked. Inside the form it sat ticked above an unticked "Application access" and
+        # eight empty lists, which read as a user who sees everything and may open nothing (seen
+        # on the live site, 26 November 2026).
+        #
+        # v1.2.133. A customer who bought a product holds its materials and their feedstocks by
+        # code, and the scope fields offer no feedstock: ticked, the user is given whatever the
+        # company holds, today and after any change to it.
+        everything = st.checkbox(
+            "Sees everything the company holds", key=f"user_all_{mark}",
+            value=editing.scope == ALL_OF_THE_COMPANYS if editing else True,
+            help="The usual choice. The user sees what the company's products and "
+                 "entitlements open, no more, and follows them when they change. Untick to "
+                 "give this user less: the fields to choose from then appear in the form.")
         with st.form(f"user_form_{mark}"):
             user_id = st.text_input(
                 "User ID", value=editing.user_id if editing else f"user-{uuid4().hex[:8]}",
@@ -993,22 +1030,13 @@ def _render_users(service: PlatformAdminService) -> None:
                 index=ROLE_OPTIONS.index(editing.role) if editing and editing.role in ROLE_OPTIONS else 0)
             active = st.checkbox("Active", value=editing.active if editing else True,
                                  key=f"user_active_{mark}")
-            # v1.2.133. A customer who bought a product holds its materials and their feedstocks
-            # by code, and the fields below offer no feedstock: ticked, the user is given whatever
-            # the company holds, today and after any change to it, and the fields are not read.
-            everything = st.checkbox(
-                "Sees everything the company holds", key=f"user_all_{mark}",
-                value=editing.scope == ALL_OF_THE_COMPANYS if editing else True,
-                help="The usual choice. The user sees what the company's products and "
-                     "entitlements open, no more, and follows them when they change. Untick to "
-                     "give this user less, with the fields below.")
-            scope = _scope_editor(f"user_{mark}", editing.scope if editing else None)
+            scope = (ALL_OF_THE_COMPANYS if everything else
+                     _scope_editor(f"user_{mark}", editing.scope if editing else None))
             actor, reason = _reason_fields(f"user_{mark}")
             if st.form_submit_button("Save changes" if editing else "Create user", type="primary"):
                 _safe_action(lambda: service.create_user(
                     UserAccess((editing.user_id if editing else user_id).strip(), company_id,
-                               email.strip(), role,
-                               ALL_OF_THE_COMPANYS if everything else scope, active),
+                               email.strip(), role, scope, active),
                     actor=actor, reason=reason
                 ))
 
