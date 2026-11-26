@@ -78,6 +78,23 @@ subscriptions = Table(
     Column("effective_from", DateTime(timezone=True), nullable=False),
     Column("effective_to", DateTime(timezone=True)),
 )
+# Every email the application tried to send (v1.2.135): to whom, what, when, and whether Microsoft
+# took it. Kept here, beside the change history, because it answers the same kind of question -
+# "did we tell them, and when" - and is written by the same hands.
+mails = Table(
+    "pa_mail", metadata,
+    Column("mail_id", String, primary_key=True),
+    Column("company_id", String, nullable=False, default=""),
+    Column("purpose", String, nullable=False),
+    Column("sender", String, nullable=False),
+    Column("recipients_json", Text, nullable=False),
+    Column("subject", Text, nullable=False),
+    Column("attachments_json", Text, nullable=False),
+    Column("status", String, nullable=False),
+    Column("error", Text, nullable=False, default=""),
+    Column("sent_at", DateTime(timezone=True), nullable=False),
+    Column("sent_by", String, nullable=False),
+)
 users = Table(
     "pa_user", metadata,
     Column("user_id", String, primary_key=True),
@@ -364,6 +381,28 @@ class PlatformAdminRepository:
         with self.engine.connect() as conn:
             rows = conn.execute(query).mappings().all()
         return [self._subscription(r) for r in rows]
+
+    def add_mail(self, mail) -> None:
+        """Record one email the application tried to send. A `mail.MailRecord`."""
+        with self.engine.begin() as conn:
+            conn.execute(insert(mails).values(
+                mail_id=mail.mail_id, company_id=mail.company_id, purpose=mail.purpose,
+                sender=mail.sender, recipients_json=json.dumps(list(mail.recipients)),
+                subject=mail.subject, attachments_json=json.dumps(list(mail.attachments)),
+                status=mail.status, error=mail.error, sent_at=mail.sent_at, sent_by=mail.sent_by))
+
+    def list_mail(self, limit: int = 200) -> list:
+        """The newest emails first. A page of them, never the whole table."""
+        from raw_material_forecasting.mail import MailRecord
+
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(mails).order_by(mails.c.sent_at.desc()).limit(int(limit))).mappings().all()
+        return [MailRecord(
+            r["mail_id"], r["company_id"], r["purpose"], r["sender"],
+            tuple(json.loads(r["recipients_json"])), r["subject"],
+            tuple(json.loads(r["attachments_json"])), r["status"], r["error"] or "",
+            _as_utc(r["sent_at"]), r["sent_by"]) for r in rows]
 
     def upsert_user(self, user: UserAccess) -> None:
         self._upsert(users, users.c.user_id, user.user_id, {

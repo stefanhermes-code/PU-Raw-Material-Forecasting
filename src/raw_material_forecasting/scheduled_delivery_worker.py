@@ -7,6 +7,7 @@ import time as time_module
 
 
 
+from raw_material_forecasting import mail, secrets_file
 from raw_material_forecasting.platform_admin.repository import PlatformAdminRepository
 from raw_material_forecasting.platform_admin.service import PlatformAdminService
 from raw_material_forecasting.platform_store import platform_store_engine
@@ -36,6 +37,10 @@ def poll_interval_seconds() -> float:
 def build_scheduler() -> DeliverySchedulerService:
     data_dir = Path("data")
     data_dir.mkdir(parents=True, exist_ok=True)
+    # The mail settings are keys, and keys live in secrets.env beside the store. The application
+    # reads that file when it starts; this is a process of its own and has to read it too, or the
+    # worker would be the one place email was never set up (v1.2.135). Names only are returned.
+    secrets_file.load()
     engine = platform_store_engine()   # v0.5.42: the same store the admin page writes - DATABASE_URL
     platform_admin = PlatformAdminService(PlatformAdminRepository(engine))
     schedules = DeliveryScheduleRepository(engine)
@@ -46,7 +51,7 @@ def build_scheduler() -> DeliverySchedulerService:
         platform_admin,
         generations,
         delivery_attempts,
-        email_adapter=None,
+        email_adapter=mail.delivery_adapter(platform_admin.repo, sent_by="Delivery worker"),
         secure_location_adapter=LocalSecureLocationAdapter(
             Path(os.environ.get("HTC_SECURE_DELIVERY_ROOT", "data/secure_delivery"))
         ),

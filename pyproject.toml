@@ -1,6 +1,6 @@
 [project]
 name = "raw-material-forecasting"
-version = "1.2.134"
+version = "1.2.135"
 description = "HTC Global polyurethane raw-material forecasting MVP"
 requires-python = ">=3.12"
 dependencies = [

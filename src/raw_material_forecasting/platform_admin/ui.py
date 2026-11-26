@@ -14,6 +14,7 @@ except ModuleNotFoundError:  # Allows non-UI verification in environments withou
     st = None
 
 
+from raw_material_forecasting import mail
 from raw_material_forecasting.platform_admin import products
 from raw_material_forecasting.platform_admin.access import chemical_allowed
 from raw_material_forecasting.platform_admin.models import (
@@ -156,7 +157,8 @@ PEOPLE_NAVIGATION = ["Users", "Recipients & Domains"]
 # Delivery was six blocks stacked on one page: profiles, the schedule, the schedule monitor, what
 # had been generated, the send control and what had been sent. Set it up, say when, send it, see
 # what happened.
-DELIVERY_NAVIGATION = ["Profiles", "Schedule", "Send", "History"]
+# Email, added v1.2.135: whether the application can send, a test, and every email it tried.
+DELIVERY_NAVIGATION = ["Profiles", "Schedule", "Send", "History", "Email"]
 CUSTOMER_REPORT_NAVIGATION = ["Period report", "Landed price calculator"]
 PRICE_NAVIGATION = ["What we hold", "Bring data in"]
 RELATIONSHIP_NAVIGATION = ["The study", "The working behind it"]
@@ -1268,7 +1270,7 @@ def _build_delivery_scheduler(service: PlatformAdminService) -> DeliverySchedule
         generation_repo,
         delivery_repo,
         secure_location_adapter=LocalSecureLocationAdapter(_delivery_secure_root()),
-        email_adapter=None,
+        email_adapter=mail.delivery_adapter(service.repo, sent_by="Delivery schedule"),
     )
     return DeliverySchedulerService(
         service,
@@ -1428,7 +1430,10 @@ def _render_delivery_execution(service: PlatformAdminService) -> None:
     st.markdown("### Deliver validated output")
     secure_root = _delivery_secure_root()
     st.caption(f"Secure location root: {secure_root}")
-    st.caption("Email transport: not configured in local development")
+    mailer = mail.mailer_for(service.repo)
+    st.caption(f"Email: sent from {mailer.sender_address}" if mailer.configured else
+               "Email: not set up, so an email delivery is recorded as not configured. "
+               "See Deliveries, Email.")
 
     generation_repo = OutputGenerationRepository(service.repo.engine)
     eligible = [
@@ -1457,7 +1462,7 @@ def _render_delivery_execution(service: PlatformAdminService) -> None:
             generation_repo,
             delivery_repo,
             secure_location_adapter=LocalSecureLocationAdapter(secure_root),
-            email_adapter=None,
+            email_adapter=mail.delivery_adapter(service.repo, sent_by=actor),
         )
         try:
             results = executor.deliver(selected_id, delivered_by=actor)
@@ -1472,6 +1477,83 @@ def _render_delivery_execution(service: PlatformAdminService) -> None:
                 st.warning(message)
             else:
                 st.error(message)
+
+
+MAIL_STATUS_WORDS = {
+    mail.ACCEPTED: "Accepted by Microsoft",
+    mail.REFUSED: "Refused",
+    mail.NOT_CONFIGURED: "Not sent: email is not set up",
+}
+
+
+def _render_email(service: PlatformAdminService) -> None:
+    """Whether the application can send an email, a test of it, and every email it tried to send.
+
+    CR-2026-11-26-01, second piece. The acceptance is one sentence - press "Send a test" and
+    receive it - and the rest of the page is what makes a failure of that readable: which
+    setting is missing, by name, or what Microsoft said, in words.
+    """
+    st.subheader("Email")
+    mailer = mail.mailer_for(service.repo)
+    mailbox, sender = mail.addresses()
+    if mailer.configured:
+        st.success(f"The application can send email. Customers see **{sender}**; the mail goes "
+                   f"through the mailbox {mailbox}, whose Sent Items keeps a copy.")
+    else:
+        st.warning("The application cannot send email yet. Not set: "
+                   + ", ".join(mailer.missing) + ".")
+        with st.expander("What has to be set, and where", expanded=True):
+            st.markdown(
+                "Three values from a Microsoft Entra **app registration** that has the Microsoft "
+                "Graph *application* permission **Mail.Send**, with admin consent:\n\n"
+                f"- `{mail.TENANT}` - the Directory (tenant) ID\n"
+                f"- `{mail.CLIENT}` - the Application (client) ID\n"
+                f"- `{mail.SECRET}` - the client secret's **value**, not its ID\n\n"
+                "On this computer they go in `secrets.env`, beside the store. On the live site "
+                "they go in the app's Secrets box, each on a line of its own like "
+                "`DATABASE_URL`.\n\n"
+                f"Two more may be set and need not be: `{mail.MAILBOX}` (now {mailbox}) and "
+                f"`{mail.SENDER}` (now {sender}).")
+
+    st.markdown("**Send a test**")
+    with st.form("mail_test"):
+        to = st.text_input("To", value=PLATFORM_ADMIN_EMAIL, key="mail_test_to")
+        by = st.text_input("Sent by", value="HTC Platform Admin", key="mail_test_by")
+        pressed = st.form_submit_button("Send a test", type="primary",
+                                        disabled=not mailer.configured)
+    if pressed:
+        if not by.strip():
+            st.error("Fill in 'Sent by' before sending. Nothing was sent.")
+        else:
+            made = mailer.send(
+                [address for address in to.replace(";", ",").split(",")],
+                subject=f"Test from PU Raw Material Forecasting v{running_version()}",
+                body=("This is a test from PU Raw Material Forecasting.\n\n"
+                      "If you are reading it, the application can send email.\n\n"
+                      f"It was asked to come from: {sender}\n"
+                      "Please look at the sender shown above this message. If it shows another "
+                      "address, sending from an alias is not switched on for the organisation.\n\n"
+                      f"Sent from Platform Admin by {by.strip()}."),
+                purpose="Test", sent_by=by)
+            if made.status == mail.ACCEPTED:
+                st.success(f"Microsoft accepted it for {', '.join(made.recipients)}. Check that "
+                           f"it arrives, and that it shows {sender} as the sender.")
+            else:
+                st.error(made.error)
+
+    st.markdown("**Every email the application tried to send**")
+    sent = service.repo.list_mail()
+    if not sent:
+        st.info("No email has been sent or tried yet.")
+        return
+    st.dataframe(pd.DataFrame([{
+        "When": one.sent_at, "To": ", ".join(one.recipients), "Subject": one.subject,
+        "What for": one.purpose, "Result": MAIL_STATUS_WORDS.get(one.status, one.status),
+        "Why not": one.error, "Attached": ", ".join(one.attachments), "From": one.sender,
+        "Sent by": one.sent_by, "Customer": one.company_id} for one in sent]),
+        width="stretch", hide_index=True)
+    st.caption("Accepted means Microsoft took the message for sending. A wrong address bounces "
+               "later, into the mailbox, and is not shown here.")
 
 
 def _render_delivery_history(service: PlatformAdminService) -> None:
@@ -1744,6 +1826,8 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
             _render_schedule_monitor(service)
         elif chosen == "Send":
             _render_delivery_execution(service)
+        elif chosen == "Email":
+            _render_email(service)
         else:
             _render_generation_history(service)
             _render_delivery_history(service)
