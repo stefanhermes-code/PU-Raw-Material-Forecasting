@@ -369,6 +369,30 @@ def lines_on(lines: Iterable[MarketLine], basis: str) -> list[MarketLine]:
     return [line for line in lines if line.basis.upper() == wanted]
 
 
+def lines_of_kind(lines: Iterable[MarketLine], kind: str) -> list[MarketLine]:
+    """The lines that are one kind of price: assessed, contract or deal.
+
+    Stefan, 26 November 2026, on Polyether Polyol - Japan - FOB, where the Forecast page printed
+    "Market price 18 Nov 2026 USD 1,867" beside "December 2026 USD 6,182, up 231.1%": asked
+    whether the Forecast page should take today's price from the series it forecasts, *"Yes, fix
+    it"*.
+
+    The 1,867 was the one assessed reading the store holds for that market; the forecast is built
+    on the customs series, which runs near 6,000. `headline_price` picks the line priced most
+    recently whatever its kind - right for Current Market's card, which leads with the newest
+    price - and since 24 November the Forecast page asked it the same question. So on the one
+    market where the newest reading is not of the kind that is forecast, the page put two
+    different prices side by side and called the difference a move.
+
+    The rule is older than the defect: `current_market.same_kind_of_price`, 3 November 2026,
+    "one kind of price for the one figure". It was applied to the banner's fallback and not to the
+    figure that replaced it three weeks later. The Forecast page narrows to the forecast's own
+    kind here, and then asks `headline_price` exactly as before.
+    """
+    wanted = price_kinds.kind_of(kind)
+    return [line for line in lines if price_kinds.kind_of(line.kind) == wanted]
+
+
 def packaging_choices(lines: Iterable[MarketLine]) -> tuple[str, ...]:
     """The packagings a market is assessed in, in the order the selector offers them.
 

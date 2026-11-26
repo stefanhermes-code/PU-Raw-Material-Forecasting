@@ -3128,18 +3128,33 @@ def _packaging_the_page_opens_on(lines, catalogue, chemical: str, geography: str
 
 
 def _current_market_price(identities: list[dict], sources, catalogue, chemical: str,
-                          geography: str, incoterm: str) -> tuple[str, float] | None:
+                          geography: str, incoterm: str, *,
+                          kind: str = "") -> tuple[str, float] | None:
     """The day and the figure Current Market prints for this market as it opens, or nothing.
 
     Not a second rule: the same lines, the same packaging and `market_lines.headline_price`, which
     is what the card itself calls. The readings are the ones Current Market already holds for this
     market, kept between runs, so asking costs nothing a reader of both pages has not paid.
+
+    `kind` narrows it to one kind of price - the Forecast page states the kind its forecast is
+    built on, so the price beside the forecast is that kind too (Stefan, 26 November 2026; see
+    `market_lines.lines_of_kind`). On a market that holds one kind, which is nearly all of them,
+    it changes nothing.
     """
     lines = lines_on(_lines_of_the_market(identities, sources, chemical, geography, live=True),
                      incoterm)
+    if kind:
+        lines = market_lines_module.lines_of_kind(lines, kind)
     _options, packaging = _packaging_the_page_opens_on(lines, catalogue, chemical, geography,
                                                        incoterm)
     return market_lines_module.headline_price(lines, incoterm, packaging)
+
+
+def _kind_that_is_forecast(identities: list[dict], identity_key: str) -> str:
+    """The kind of price - assessed, contract or deal - of the series a forecast is built on."""
+    row = next((row for row in identities
+                if str(row.get("identity_key")) == str(identity_key)), None)
+    return price_kinds.kind_of(row.get("observation_type")) if row else ""
 
 
 def forecast_identity_keys(identities: list[dict], observations: list[dict],
@@ -3356,12 +3371,23 @@ def render_market_forecast(runtime_access: RuntimeAccess | None = None) -> None:
     # The price Current Market shows for this market, on the day it shows it. The card, the
     # percentage on it, the point the chart starts from, the CSV and the report all read this one
     # figure (Stefan, 24 November 2026). None where the market has no current price.
+    #
+    # Of the kind the forecast is built on (Stefan, 26 November 2026). Polyether Polyol Japan FOB
+    # holds one assessed reading at 1,867 and a customs series near 6,000; the forecast is built
+    # on the customs series, and with the newest reading of any kind beside it the card read
+    # "up 231.1%".
+    forecast_kind = _kind_that_is_forecast(identities, identity_keys[0])
     market_price = _current_market_price(identities, snapshot.sources, priced_now,
-                                         chemical, origin, incoterm)
+                                         chemical, origin, incoterm, kind=forecast_kind)
     # Only from an engine of this release: an older one answers with the tax still in the
     # readings, and that figure does not belong beside a forecast with the tax out.
     if not _engine_is_this_release():
         market_price = None
+    # What Current Market leads with, where that is another figure: the two pages then print two
+    # prices for one market, and the reader is told why rather than left to find it.
+    leads_current_market = (_current_market_price(identities, snapshot.sources, priced_now,
+                                                  chemical, origin, incoterm)
+                            if market_price is not None else None)
     _say_when_the_engine_is_older()
 
     forecast_payload: dict = {}
@@ -3394,6 +3420,12 @@ def render_market_forecast(runtime_access: RuntimeAccess | None = None) -> None:
         # Any packaging of it: this page chooses a chemical, a geography and the terms, and leaves
         # packaging to the lines on the chart, so "is this market priced now" is asked at the three
         # fields the reader actually picked.
+        if market_price is not None and leads_current_market not in (None, market_price):
+            st.caption(
+                "This market holds more than one kind of price. The forecast is built on the "
+                f"{price_kinds.display_kind(forecast_kind).lower()} price, so today's price here "
+                "is that one. Current Market leads with the newest price of any kind, which for "
+                "this market is a different figure.")
         if not any(one[:3] == (chemical, origin, incoterm) for one in priced_now):
             st.caption(
                 "No current price: nobody has priced this market inside the last "
@@ -7446,7 +7478,8 @@ def _price_monitor_markets(scope, tell=None) -> list[dict] | None:
         if not payload:
             continue
         market_price = (_current_market_price(identities, snapshot.sources, priced_now,
-                                              chemical, origin, incoterm)
+                                              chemical, origin, incoterm,
+                                              kind=_kind_that_is_forecast(identities, keys[0]))
                         if same_release else None)
         export = forecast_export_frame(payload, str(payload.get("currency") or ""),
                                        currency, _load_fx_table(), market_price=market_price)
