@@ -7663,6 +7663,35 @@ def _require_a_store_worth_signing_in_to() -> None:
     st.stop()
 
 
+def _signed_in_as(runtime_access: RuntimeAccess | None) -> tuple[str, str] | None:
+    """The company and the address a reader is signed in under, or nothing where nobody is.
+
+    Stefan, 27 November 2026, checking the application as Sheela Foam's user before the first
+    buyers are let in: *"What would help me is if in this 'area' it shows the company name and
+    my email address on how I am logged in."* He holds an account under more than one customer,
+    and nothing on the page said which one he was looking through.
+    """
+    if runtime_access is None:
+        return None
+    company = str(getattr(runtime_access.company, "name", "") or "").strip()
+    email = str(getattr(runtime_access.user, "email", "") or "").strip()
+    return (company, email) if company or email else None
+
+
+def _render_signed_in_as(runtime_access: RuntimeAccess | None) -> None:
+    held = _signed_in_as(runtime_access)
+    if held is None:
+        return
+    import html
+
+    company, email = (html.escape(part) for part in held)
+    st.markdown(
+        '<div class="signed-in-as" style="text-align:right; line-height:1.25; '
+        f'padding-top:0.15rem;"><strong>{company}</strong><br>'
+        f'<span style="font-size:0.82rem; color:#667b90;">{email}</span></div>',
+        unsafe_allow_html=True)
+
+
 def main() -> None:
     # The keys the application needs, from a file beside the store rather than from the project
     # folder, which is synced to OneDrive. Names only ever reach the log; values never leave here.
@@ -7706,7 +7735,13 @@ def main() -> None:
     # are when they want to. Stefan, 28 September 2026: a button on the right of the page, not in
     # the banner and not behind Platform Admin. It sits in the top row beside Platform Admin, so it
     # is in the same place whichever page is open.
-    nav_col, admin_col, close_col = st.columns([7, 1.35, 1.0])
+    #
+    # And who is reading, between the pages and the way out (v1.2.146): the company and the
+    # address signed in. Nothing is drawn there where nobody is signed in.
+    nav_col, who_col, admin_col, close_col = st.columns([5.4, 2.5, 1.35, 1.0],
+                                                        vertical_alignment="center")
+    with who_col:
+        _render_signed_in_as(runtime_access)
     with nav_col:
         page = st.radio(
             "Application navigation",
