@@ -1973,6 +1973,39 @@ def _authenticate(service: PlatformAdminService) -> None:
     st.stop()
 
 
+def _render_admin_password(service: PlatformAdminService) -> None:
+    """The Platform Admin replacing their own password, at the foot of the Dashboard.
+
+    Only where there is a sign-in to change the password of: with login off, nobody has proved
+    who they are and the page would be asking a stranger for the old one.
+    """
+    if not login_enabled():
+        return
+    mark = form_mark("admin_password")
+    with st.expander("Change the Platform Admin password"):
+        from raw_material_forecasting.platform_admin.auth import password_rules
+
+        length, kinds, _unlike_the_start = password_rules()
+        st.caption(f"The new password has to be {length}; {kinds}; different from the "
+                   "current one.")
+        with st.form(f"admin_password_form_{mark}"):
+            current = st.text_input("Current password", type="password",
+                                    key=f"admin_password_current_{mark}")
+            chosen = st.text_input("New password", type="password",
+                                   key=f"admin_password_new_{mark}")
+            confirm = st.text_input("New password again", type="password",
+                                    key=f"admin_password_confirm_{mark}")
+            if st.form_submit_button("Change the password", type="primary"):
+                if chosen != confirm:
+                    st.error("The two new passwords are not the same.")
+                else:
+                    _safe_action(
+                        lambda: service.change_platform_admin_password(
+                            PLATFORM_ADMIN_EMAIL, current, chosen),
+                        done="The Platform Admin password was changed. Sign in with the new "
+                             "one from now on.")
+
+
 def _sign_out_of_platform_admin() -> None:
     """Leave the admin door. One of these, however many buttons ask for it."""
     st.session_state.pop("platform_admin_auth_email", None)
@@ -2115,6 +2148,7 @@ def render_platform_admin(internal_renderers: dict[str, object] | None = None) -
 
     if section == OVERVIEW:
         _render_dashboard(service, internal_renderers)
+        _render_admin_password(service)
         return
 
     # ---- Customers ------------------------------------------------------------------------------

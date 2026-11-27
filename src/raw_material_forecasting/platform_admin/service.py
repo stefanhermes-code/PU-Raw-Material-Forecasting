@@ -172,6 +172,45 @@ class PlatformAdminService:
             reason="Initial Platform Admin password set",
         )
 
+    def change_platform_admin_password(self, email: str, current_password: str,
+                                       new_password: str) -> None:
+        """The Platform Admin replacing their own password. Proving the old one is part of it.
+
+        Stefan, 27 November 2026: *"How do I change my Platform Admin PW?"* He could not. The
+        password could be set once, on the first visit, and never again; the only way to another
+        one was to remove the record from the store by hand - which reopens "first login: set
+        the Platform Admin password" to whoever arrives next and types his address.
+
+        Held to the rules a customer's password is held to (`password_complaint`). The first one
+        never was: any text that was not empty was taken.
+        """
+        if not self.verify_platform_admin_password(email, current_password):
+            raise SignInRefused("that is not the current Platform Admin password")
+        if new_password == current_password:
+            raise ConfigurationError("the new password has to be a different one")
+        complaint = password_complaint(new_password)
+        if complaint:
+            raise ConfigurationError(complaint)
+        digest = hash_password(new_password)
+        self.repo.set_platform_admin_credential(PlatformAdminCredential(
+            email=PLATFORM_ADMIN_EMAIL,
+            password_hash=digest.password_hash,
+            password_salt=digest.password_salt,
+            password_iterations=digest.password_iterations,
+            password_set_at=self._now(),
+        ))
+        # That it was changed, by whom and when. Neither password, and nothing made from one.
+        self._audit(
+            company_id="__platform__",
+            entity_type="platform_admin_auth",
+            entity_id=PLATFORM_ADMIN_EMAIL,
+            action="PASSWORD_CHANGED",
+            actor=PLATFORM_ADMIN_EMAIL,
+            old_value={"email": PLATFORM_ADMIN_EMAIL, "password_set": True},
+            new_value={"email": PLATFORM_ADMIN_EMAIL, "password_set": True},
+            reason="Platform Admin password changed by its holder",
+        )
+
     def verify_platform_admin_password(self, email: str, password: str) -> bool:
         if not is_platform_admin_email(email):
             return False
