@@ -27,6 +27,83 @@ for _source_root in (_REPO_ROOT / "src", _REPO_ROOT / "market_data_engine"):
     if _source_root.is_dir() and str(_source_root) not in sys.path:
         sys.path.insert(0, str(_source_root))
 
+
+def _forget_an_older_release(root: Path = _REPO_ROOT, modules: dict | None = None,
+                             settle_seconds: float = 3.0) -> list[str]:
+    """On a hosted deployment: drop the package this process imported for an OLDER release.
+
+    27 November 2026, v1.2.139. The live site answered every visitor with an ImportError for six
+    minutes. The publish was sound; the copy imported cleanly on this machine. What happened on
+    the host: it re-reads THIS file on every visit and keeps the package it imported earlier, so
+    the new page asked the old package for a name it did not have.
+
+    Streamlit itself drops every module of the project when one of its files changes - but the
+    watcher that does it belongs to a browser session. With somebody on the page when a publish
+    lands, the package is imported again and the header moves to the new release by itself
+    (seen on v1.2.138 and v1.2.140, both with a tab open). With nobody on the page, nothing
+    drops anything, and the next visitor gets the new page on the old package - until a reboot.
+    That is also what "page v1.2.114, engine v1.2.112" was on 24 November.
+
+    So this does what the watcher would have done, where it was not there to do it: the release
+    the process imported (`release._RUNNING`) is compared with VERSION on disk, and where they
+    differ every module that lives in this folder is forgotten, to be imported again by the
+    lines below. The engine's own package is left to `embedded_engine`, which replaces a running
+    engine of another release and keeps what it started on `sys`.
+
+    Only on a published deployment (the marker file). On Stefan's machine an edited file is not
+    a release, and the application says "close the window and start Run-MVP.bat" instead.
+
+    VERSION is among the first files a publish writes, so a visit in that same second waits for
+    the rest to land before importing them.
+    """
+    modules = sys.modules if modules is None else modules
+    held = modules.get("raw_material_forecasting.release")
+    if held is None or not (root / "HOSTED_DEPLOYMENT").is_file():
+        return []
+    version_file = root / "VERSION"
+    try:
+        on_disk = version_file.read_text(encoding="utf-8").strip()
+        written = version_file.stat().st_mtime
+    except OSError:
+        return []
+    running = str(getattr(held, "_RUNNING", "") or "")
+    if not on_disk or running in ("", "unknown") or on_disk == running:
+        return []
+    import time
+
+    age = time.time() - written
+    if 0 <= age < settle_seconds:
+        time.sleep(settle_seconds - age)
+    # The connections the old package holds go back before it is forgotten: the store takes a
+    # limited number of them, and a forgotten module's pool is closed only when Python gets to it.
+    held_store = modules.get("raw_material_forecasting.platform_store")
+    for engine in list(getattr(held_store, "_ENGINES", {}).values()):
+        try:
+            engine.dispose()
+        except Exception:
+            pass
+    engine_root = (root / "market_data_engine").resolve()
+    home = root.resolve()
+    forgotten = []
+    for name, module in list(modules.items()):
+        file = getattr(module, "__file__", None)
+        if not file or name == "__main__":
+            continue
+        try:
+            where = Path(file).resolve()
+        except OSError:
+            continue
+        if where.is_relative_to(home) and not where.is_relative_to(engine_root):
+            del modules[name]
+            forgotten.append(name)
+    logging.getLogger(__name__).warning(
+        "release %s is on disk and %s was in memory: %d modules forgotten, to be imported again",
+        on_disk, running, len(forgotten))
+    return forgotten
+
+
+_forget_an_older_release()
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
