@@ -147,7 +147,7 @@ from raw_material_forecasting.fx import DEFAULT_DISPLAY_CURRENCY, DISPLAY_CURREN
 from raw_material_forecasting.source_status import classify_source, next_check_text, price_matrix, price_matrix_table, summarize as summarize_sources, window_by_source
 from raw_material_forecasting.platform_admin.access import allowed_application_pages, entitled_chemicals as chemicals_within_entitlement, filter_entitled_values, identity_allowed
 from raw_material_forecasting.platform_admin.models import RuntimeAccess
-from raw_material_forecasting.platform_admin.service import PlatformAdminError, said_to_the_customer
+from raw_material_forecasting.platform_admin.service import PlatformAdminError
 from raw_material_forecasting.platform_admin.ui import build_service as build_platform_admin_service, render_platform_admin
 from raw_material_forecasting.platform_admin.auth import PLATFORM_ADMIN_EMAIL, login_enabled, normalise_email
 from raw_material_forecasting.platform_admin.navigation import PLATFORM_ADMIN_PAGE, application_pages
@@ -296,6 +296,19 @@ def _configured_runtime_user_email() -> str:
     if not TRUSTED_RUNTIME_IDENTITY:
         return ""
     return os.environ.get("HTC_RUNTIME_USER_EMAIL", "").strip()
+
+
+def said_to_the_customer(error: Exception) -> str | None:
+    """The sentence a refusal carries for the customer, where it carries one.
+
+    Read off the error HERE, and not imported from the service by name. v1.2.139 imported it by
+    name at the top of this file and took the live site down on 27 November 2026: the hosted
+    process re-reads this file on every visit and keeps the package it imported when it started,
+    so the day a release adds a name, this file asks an older package for it and every visitor
+    gets an ImportError instead of a sign-in page. With an older package behind it this returns
+    None and the door says what it said before, until the host is restarted.
+    """
+    return getattr(error, "for_the_customer", None)
 
 
 def _render_sign_in(service) -> None:
