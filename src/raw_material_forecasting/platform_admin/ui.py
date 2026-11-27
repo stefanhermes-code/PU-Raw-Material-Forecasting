@@ -17,7 +17,7 @@ except ModuleNotFoundError:  # Allows non-UI verification in environments withou
 from dataclasses import replace
 
 from raw_material_forecasting import mail, page_reports, price_monitor
-from raw_material_forecasting.platform_admin import products
+from raw_material_forecasting.platform_admin import products, welcome
 from raw_material_forecasting.platform_admin.access import chemical_allowed
 from raw_material_forecasting.platform_admin.models import (
     is_on,
@@ -1146,12 +1146,37 @@ def _suggested_password() -> str:
     return "-".join(picked) + "-" + str(secrets.randbelow(90) + 10) + "!"
 
 
+def _set_password_and_welcome(service: PlatformAdminService, user: UserAccess, password: str,
+                              actor: str, reason: str) -> None:
+    """Set the start password and email it to the user, in that order.
+
+    The password first: a password the rules refuse must be refused before anything is sent. If
+    Microsoft then does not take the message the password stays set, and the refusal says so -
+    it is still in the form, to be passed on by hand or replaced.
+    """
+    service.set_user_password(user.email, password, actor=actor, reason=reason)
+    made = mail.mailer_for(service.repo).send(
+        [user.email], subject=welcome.SUBJECT,
+        body=welcome.body(name=user.name, email=user.email, password=password,
+                          address=welcome.application_address(),
+                          starts=service.access_starts_on(user.company_id)),
+        purpose=welcome.PURPOSE, sent_by=actor, company_id=user.company_id)
+    if made.status != mail.ACCEPTED:
+        raise ConfigurationError(
+            f"The password was set, but the welcome email was not sent: {made.error} "
+            "Pass the password on yourself, or set a new one and send it again.")
+
+
 def _render_user_password(service: PlatformAdminService, user: UserAccess) -> None:
     """Handing a customer their first password, and resetting one they have lost.
 
-    Stefan sets it here and sends it on; the application makes them replace it before it opens
-    (see `_render_password_change` in app.py). HTC never holds a customer's own password: what is
+    Stefan sets it here; the application makes them replace it before it opens (see
+    `_render_password_change` in app.py). HTC never holds a customer's own password: what is
     stored is a PBKDF2 digest, and nothing on this screen can read one back.
+
+    Since v1.2.143 the same screen can send it on (Stefan, 27 November 2026: "Will the user get
+    an email with this PW?" - "Yes I think that welcome button saves me time"). And a suggested
+    password is put into the two fields, where it had to be copied into each by hand.
     """
     if not user.active:          # a deleted user cannot sign in, so there is nothing to hand over
         return
@@ -1161,13 +1186,17 @@ def _render_user_password(service: PlatformAdminService, user: UserAccess) -> No
 
         suggestion_key = f"user_password_suggestion_{user.user_id}"
         if st.button("Suggest a password", key=f"suggest_{user.user_id}"):
-            st.session_state[suggestion_key] = _suggested_password()
+            made = _suggested_password()
+            st.session_state[suggestion_key] = made
+            # Before the two fields are drawn in this run, so they come up filled.
+            st.session_state[f"user_password_{mark}"] = made
+            st.session_state[f"user_password_confirm_{mark}"] = made
         suggestion = st.session_state.get(suggestion_key, "")
         if suggestion:
             st.code(suggestion, language=None)
-            st.caption("Copy this into the form below and send it to the user. They replace it "
-                       "the first time they sign in.")
+            st.caption("It is filled in below. The user replaces it the first time they sign in.")
 
+        mailer = mail.mailer_for(service.repo)
         with st.form(f"user_password_form_{mark}"):
             password = st.text_input(
                 "Password to hand over", type="password",
@@ -1177,9 +1206,26 @@ def _render_user_password(service: PlatformAdminService, user: UserAccess) -> No
             confirm = st.text_input("Confirm", type="password",
                                     key=f"user_password_confirm_{mark}")
             actor, reason = _reason_fields(f"user_password_{mark}")
-            if st.form_submit_button("Set this password", type="primary"):
+            only_set, and_send = st.columns(2)
+            with only_set:
+                set_it = st.form_submit_button("Set this password")
+            with and_send:
+                send_it = st.form_submit_button("Set it and email it to the user", type="primary",
+                                                disabled=not mailer.configured)
+            if mailer.configured:
+                st.caption(f"The email goes to {user.email} from {mailer.sender_address}: where "
+                           "to sign in, this password, and that it has to be replaced at the "
+                           "first sign-in.")
+            else:
+                st.caption("The application cannot send email here, so the password is passed "
+                           "on by hand. Deliveries, Email says what is not set.")
+            if set_it or send_it:
                 if password != confirm:
                     st.error("The two passwords are not the same.")
+                elif send_it:
+                    _safe_action(lambda: _set_password_and_welcome(
+                        service, user, password, actor, reason),
+                        done=f"Password set and the welcome email sent to {user.email}.")
                 else:
                     _safe_action(lambda: service.set_user_password(
                         user.email, password, actor=actor, reason=reason))
