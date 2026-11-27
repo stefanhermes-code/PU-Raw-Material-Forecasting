@@ -425,6 +425,14 @@ def _render_password_change(service, email: str) -> None:
     with left:
         st.markdown("### Choose your own password")
         st.caption("The password you were given has travelled in a message. Replace it to go on.")
+        # The rules, before a password is typed and not only as a refusal after it (Stefan,
+        # 27 November 2026). Asked for here and not at the top of the file: see
+        # `said_to_the_customer` for what a new name imported up there did to the live site.
+        try:
+            from raw_material_forecasting.platform_admin.auth import password_rules
+            st.caption("Your new password has to be " + "; ".join(password_rules()) + ".")
+        except ImportError:
+            pass
         with st.form("application_password_change"):
             current = st.text_input("The password you were given", type="password")
             chosen = st.text_input("Your new password", type="password")

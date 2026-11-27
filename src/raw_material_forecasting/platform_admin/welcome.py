@@ -20,7 +20,7 @@ import os
 from datetime import date
 from typing import Mapping
 
-from .auth import PLATFORM_ADMIN_EMAIL
+from .auth import PLATFORM_ADMIN_EMAIL, password_rules
 
 # Where a customer signs in. Not a secret; it can be set by name without a release, the same way
 # the mailbox and the sender can.
@@ -53,6 +53,9 @@ def body(*, name: str, email: str, password: str, address: str,
         "",
         "The first time you sign in, the application asks you to choose your own password. "
         "The start password stops working at that moment.",
+        "",
+        "Your own password has to be:",
+        *[f"  - {rule}" for rule in password_rules()],
         "",
         "Your sign-in is personal. Please do not share it.",
         "",

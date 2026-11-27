@@ -55,6 +55,22 @@ def password_complaint(password: str) -> str | None:
     return None
 
 
+def password_rules() -> tuple[str, ...]:
+    """What a password a customer chooses has to be, said before they choose it.
+
+    Stefan, 27 November 2026, on the welcome email: *"make sure that the PW requirements are made
+    clear (nr of chars etc.)"*. Until then the rules were said only as a refusal, after a
+    password that broke one had been typed twice. `password_complaint` is the test; this is the
+    same test in words, and the two are held together by a test of their own.
+    """
+    return (
+        f"at least {MINIMUM_PASSWORD_LENGTH} characters",
+        "at least three of these four: a small letter, a capital letter, a digit, "
+        "a punctuation mark",
+        "different from the start password",
+    )
+
+
 def is_platform_admin_email(email: str) -> bool:
     return hmac.compare_digest(str(email or "").strip().lower(), PLATFORM_ADMIN_EMAIL)
 
