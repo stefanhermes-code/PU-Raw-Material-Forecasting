@@ -258,8 +258,9 @@ class PlatformAdminService:
         if not subscription.regions:
             raise ConfigurationError("Choose at least one origin region. Nothing was changed.")
         try:
-            products.fee(subscription.product, subscription.edition, subscription.material_group,
-                         len(subscription.regions))
+            products.price(subscription.product, subscription.edition,
+                           subscription.material_group, len(subscription.regions),
+                           discount=subscription.annual_discount)
             for code in subscription.regions:
                 products.region(code)
         except ValueError as exc:

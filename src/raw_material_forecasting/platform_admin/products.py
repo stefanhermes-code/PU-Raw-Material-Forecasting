@@ -25,6 +25,7 @@ application already enforces, so every existing check stays exactly where it was
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
@@ -233,6 +234,97 @@ def fee(product: str, edition: str, material_group: str, regions: int) -> int:
     if not 1 <= int(regions) <= len(REGIONS):
         raise ValueError(f"the price list covers 1 to {len(REGIONS)} origin regions, not {regions}")
     return PRICES[chosen.key][material_group][int(regions) - 1]
+
+
+# ---------------------------------------------------------------------------- the price agreed
+@dataclass(frozen=True)
+class Price:
+    """What one product costs this customer: the list, what was taken off, and the term's share.
+
+    Stefan, 27 November 2026, on Sheela Foam's six months: *"it is 50% of the normal annual fee
+    with a discount of USD 1000 on the total annual amount, thus being USD 4500 for 6 months."*
+
+        USD 10,000 a year by the price list (Direct Access, Flexible Foam, two regions)
+        less USD 1,000 on the annual amount                       USD 9,000 a year
+        six months is 50% of a year                               USD 4,500 for the term
+
+    Until v1.2.142 a product row was the product, the group, the regions and two dates, so the
+    page said USD 10,000 a year for a customer who pays USD 4,500 for six months and the deal
+    lived only in the reason typed at the save.
+    """
+    by_the_list: int            # a year
+    discount: int               # off the year
+    agreed: int                 # a year
+    months: int | None          # the term; None for a product that runs on
+    days: int | None            # days of the term beyond its whole months
+    for_the_term: int | None    # None for a product that runs on
+
+    @property
+    def share(self) -> float | None:
+        return None if self.months is None else term_share(self.months, self.days or 0)
+
+    @property
+    def term(self) -> str:
+        return "" if self.months is None else term_words(self.months, self.days or 0)
+
+
+def _months_on(start: date, months: int) -> date:
+    year, month = divmod(start.month - 1 + months, 12)
+    year += start.year
+    month += 1
+    for day in range(start.day, 27, -1):         # 31 January and a month is the end of February
+        try:
+            return date(year, month, day)
+        except ValueError:
+            continue
+    return date(year, month, min(start.day, 28))
+
+
+def term_of(start: date, end: date) -> tuple[int, int]:
+    """The whole months between two dates, and the days left over.
+
+    Months, because that is how a term is sold: 1 December to 1 June is six months and half a
+    year, where counting days makes it 182 of 365 and USD 4,488. The default end the Products
+    page offers is 365 days on, which is a year whether or not a 29 February falls inside it.
+    """
+    if (end - start).days in (365, 366):
+        return 12, 0
+    months = (end.year - start.year) * 12 + (end.month - start.month)
+    if _months_on(start, months) > end:
+        months -= 1
+    return months, (end - _months_on(start, months)).days
+
+
+def term_share(months: int, days: int = 0) -> float:
+    """The part of a year a term is. Left-over days count as days of a 365-day year (the
+    writer's reading: Stefan's rule was stated for whole months)."""
+    return months / 12 + days / 365
+
+
+def term_words(months: int, days: int = 0) -> str:
+    years, rest = divmod(months, 12)
+    parts = ([f"{years} year" + ("s" if years != 1 else "")] if years else []) + (
+        [f"{rest} month" + ("s" if rest != 1 else "")] if rest else []) + (
+        [f"{days} day" + ("s" if days != 1 else "")] if days else [])
+    return " and ".join(parts) if parts else "0 days"
+
+
+def price(product: str, edition: str, material_group: str, regions: int, *, discount: int = 0,
+          start: date | None = None, end: date | None = None) -> Price:
+    """The list price, the price agreed for a year, and the amount for the term."""
+    listed = fee(product, edition, material_group, regions)
+    discount = int(discount or 0)
+    if discount < 0:
+        raise ValueError("a discount cannot be less than nothing")
+    if discount >= listed:
+        raise ValueError(f"a discount of {CURRENCY} {discount:,} leaves nothing of the "
+                         f"{CURRENCY} {listed:,} on the price list")
+    agreed = listed - discount
+    if start is None or end is None:
+        return Price(listed, discount, agreed, None, None, None)
+    months, days = term_of(start, end)
+    return Price(listed, discount, agreed, months, days,
+                 int(round(agreed * term_share(months, days))))
 
 
 def price_list() -> list[dict[str, object]]:

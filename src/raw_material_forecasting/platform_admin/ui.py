@@ -678,6 +678,17 @@ def _subscription_fee(one: Subscription) -> int | None:
         return None                 # a row from before a product or group was renamed
 
 
+def _subscription_price(one: Subscription) -> products.Price | None:
+    """The price agreed for one product: the list, the discount, and the amount for its term."""
+    try:
+        return products.price(
+            one.product, one.edition, one.material_group, len(one.regions),
+            discount=one.annual_discount, start=one.effective_from.date(),
+            end=one.effective_to.date() if one.effective_to else None)
+    except ValueError:
+        return None
+
+
 def _subscription_words(one: Subscription) -> str:
     try:
         what = products.offer(one.product, one.edition).name
@@ -820,9 +831,12 @@ def _render_products(service: PlatformAdminService, markets_held=None) -> None:
     in_force = [one for one in held if one.is_active(now)]
     if in_force:
         total = sum(fee for fee in map(_subscription_fee, in_force) if fee is not None)
+        agreed = sum(one.agreed for one in map(_subscription_price, in_force) if one is not None)
         st.write(f"In force today: {len(in_force)} "
                  f"{'product' if len(in_force) == 1 else 'products'}, {_money(total)} a year by "
-                 f"the price list.")
+                 f"the price list."
+                 + (f" Agreed with this customer: {_money(agreed)} a year." if agreed != total
+                    else ""))
     access = [one for one in in_force if one.product == products.DIRECT_ACCESS]
     if len(access) > 1:
         st.warning("This customer holds Direct Access more than once. In the application the "
@@ -871,11 +885,46 @@ def _render_products(service: PlatformAdminService, markets_held=None) -> None:
             "No end date", key=f"sub_open_{mark}",
             value=bool(editing and editing.effective_to is None))
 
+        # What was taken off the annual fee for this customer (Stefan, 27 November 2026, on
+        # Sheela Foam: "a discount of USD 1000 on the total annual amount").
+        discount = int(st.number_input(
+            "Discount on the annual fee (USD)", min_value=0, step=100,
+            value=int(editing.annual_discount) if editing else 0, key=f"sub_discount_{mark}",
+            help="Taken off the annual fee on the price list. The amount for a term shorter or "
+                 "longer than a year is worked out from what is left and the two dates."))
         if region_codes:
             fee = products.fee(offer.product, offer.edition, group_code, len(region_codes))
-            st.metric("Annual fee by the price list", _money(fee),
-                      help="US dollars per company per year. For reference: nothing is invoiced "
-                           "from here.")
+            try:
+                agreed = products.price(
+                    offer.product, offer.edition, group_code, len(region_codes),
+                    discount=discount, start=effective_from,
+                    end=None if open_ended else effective_to)
+            except ValueError as exc:
+                agreed = None
+                st.error(f"{exc}.")
+            figures = [("Annual fee by the price list", fee,
+                        "US dollars per company per year. For reference: nothing is invoiced "
+                        "from here.")]
+            if agreed is not None and agreed.discount:
+                figures.append(("Agreed a year", agreed.agreed,
+                                "The price list less the discount."))
+            if (agreed is not None and agreed.for_the_term is not None
+                    and agreed.for_the_term != agreed.agreed):
+                figures.append((f"For this term ({agreed.term})", agreed.for_the_term,
+                                "The annual amount agreed, for the part of a year between the "
+                                "two dates."))
+            for column, (label, amount, said) in zip(st.columns(len(figures)), figures):
+                column.metric(label, _money(amount), help=said)
+            if len(figures) > 1:
+                st.caption(
+                    f"{_money(fee)} a year by the price list"
+                    + (f", less {_money(agreed.discount)}, is {_money(agreed.agreed)} a year"
+                       if agreed.discount else "")
+                    + (f". {agreed.term.capitalize()} is {agreed.share:.0%} of a year: "
+                       f"{_money(agreed.for_the_term)}"
+                       if agreed.for_the_term is not None
+                       and agreed.for_the_term != agreed.agreed else "")
+                    + ". Nothing is invoiced from here.")
             if not products.DELIVERED_TODAY[offer.product]:
                 st.warning(products.NOT_DELIVERED_YET[offer.product])
             _what_it_opens(group_code, region_codes, markets)
@@ -896,17 +945,23 @@ def _render_products(service: PlatformAdminService, markets_held=None) -> None:
                     editing.subscription_id if editing else f"sub-{company_id}-{uuid4().hex[:8]}",
                     company_id, offer.product, offer.edition, group_code,
                     frozenset(region_codes), _as_utc(effective_from),
-                    _as_utc(ends) if ends else None),
+                    _as_utc(ends) if ends else None, discount),
                 actor=actor, reason=reason))
 
     def listed(one: Subscription) -> dict:
         fee = _subscription_fee(one)
+        agreed = _subscription_price(one)
         try:
             what, which = products.offer(one.product, one.edition).name, products.group(one.material_group).name
         except ValueError:
             what, which = f"{one.product} / {one.edition}", one.material_group
         return {"Product": what, "Material group": which, "Regions": _region_names(one.regions),
                 "Annual fee": _money(fee) if fee is not None else "not on the price list",
+                "Discount": _money(agreed.discount) if agreed is not None and agreed.discount else "-",
+                "Agreed a year": _money(agreed.agreed) if agreed is not None else "-",
+                "For the term": (f"{_money(agreed.for_the_term)} for {agreed.term}"
+                                 if agreed is not None and agreed.for_the_term is not None
+                                 else "runs on"),
                 "From": one.effective_from.date(),
                 "To": one.effective_to.date() if one.effective_to else None,
                 "In force": "Yes" if one.is_active(now) else "No"}
@@ -1036,6 +1091,8 @@ def _render_users(service: PlatformAdminService) -> None:
             user_id = st.text_input(
                 "User ID", value=editing.user_id if editing else f"user-{uuid4().hex[:8]}",
                 disabled=editing is not None, key=f"user_id_{mark}")
+            name = st.text_input("Name", value=editing.name if editing else "",
+                                 key=f"user_name_{mark}")
             email = st.text_input("User email", value=editing.email if editing else "",
                                   key=f"user_email_{mark}")
             role = st.selectbox(
@@ -1049,14 +1106,15 @@ def _render_users(service: PlatformAdminService) -> None:
             if st.form_submit_button("Save changes" if editing else "Create user", type="primary"):
                 _safe_action(lambda: service.create_user(
                     UserAccess((editing.user_id if editing else user_id).strip(), company_id,
-                               email.strip(), role, scope, active),
+                               email.strip(), role, scope, active, name.strip()),
                     actor=actor, reason=reason
                 ))
 
     record_tabs(_user_kind(service, company_id), users, form, deactivate=service.deactivate,
                 key=f"user_{company_id}",
                 listed=lambda u: {
-                    "User ID": u.user_id, "Email": u.email, "Role": u.role, "Active": u.active,
+                    "Name": u.name or "-", "User ID": u.user_id, "Email": u.email,
+                    "Role": u.role, "Active": u.active,
                     "Password": _password_state(service, u.email), "Scope": scope_to_dict(u.scope)},
                 # The password belongs to the user whose row was clicked. It had a dropdown of its
                 # own under the list: a second chooser, which could be on a different user from

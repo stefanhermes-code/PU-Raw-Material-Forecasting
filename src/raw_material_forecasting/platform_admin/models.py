@@ -87,9 +87,13 @@ class Subscription:
     regions: frozenset[str]
     effective_from: datetime
     effective_to: datetime | None
+    # US dollars taken off the ANNUAL list fee for this customer (v1.2.142). The amount for the
+    # term is worked out from it and the dates, never stored: see `products.price`.
+    annual_discount: int = 0
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "regions", _norm(self.regions))
+        object.__setattr__(self, "annual_discount", int(self.annual_discount or 0))
 
     def is_active(self, at: datetime) -> bool:
         return self.effective_from <= at and (self.effective_to is None or at < self.effective_to)
@@ -226,6 +230,9 @@ class UserAccess:
     role: str
     scope: EntitlementScope
     active: bool = True
+    # Who this is (v1.2.142). An address alone does not say: s.hermes@htcglobal.asia under
+    # Sheela Foam is Stefan Hermes looking at what their buyers are given.
+    name: str = ""
 
 
 @dataclass(frozen=True)

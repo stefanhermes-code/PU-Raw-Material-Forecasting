@@ -77,6 +77,7 @@ subscriptions = Table(
     Column("regions_json", Text, nullable=False),
     Column("effective_from", DateTime(timezone=True), nullable=False),
     Column("effective_to", DateTime(timezone=True)),
+    Column("annual_discount", Integer, nullable=False, server_default="0"),
 )
 # Every email the application tried to send (v1.2.135): to whom, what, when, and whether Microsoft
 # took it. Kept here, beside the change history, because it answers the same kind of question -
@@ -130,6 +131,7 @@ users = Table(
     Column("role", String, nullable=False),
     Column("scope_json", Text, nullable=False),
     Column("active", Boolean, nullable=False),
+    Column("name", String, nullable=False, server_default=""),
 )
 approved_domains = Table(
     "pa_approved_domain", metadata,
@@ -280,7 +282,10 @@ class PlatformAdminRepository:
     # Columns added to a table that already exists. `create_all` makes tables that are missing and
     # leaves the rest alone, so without this a store created before 31 October 2026 would be read
     # for a column it has not got, on both SQLite and Postgres.
-    LATER_COLUMNS = (("pa_recipient", "active", "BOOLEAN NOT NULL DEFAULT TRUE"),)
+    LATER_COLUMNS = (("pa_recipient", "active", "BOOLEAN NOT NULL DEFAULT TRUE"),
+                     # v1.2.142: the discount agreed on a product, and who a user is.
+                     ("pa_subscription", "annual_discount", "INTEGER NOT NULL DEFAULT 0"),
+                     ("pa_user", "name", "VARCHAR NOT NULL DEFAULT ''"))
 
     def _add_missing_columns(self) -> None:
         from sqlalchemy import inspect, text
@@ -386,13 +391,15 @@ class PlatformAdminRepository:
             "regions_json": _set_json(subscription.regions),
             "effective_from": subscription.effective_from,
             "effective_to": subscription.effective_to,
+            "annual_discount": int(subscription.annual_discount or 0),
         })
 
     @staticmethod
     def _subscription(r) -> Subscription:
         return Subscription(r["subscription_id"], r["company_id"], r["product"], r["edition"],
                             r["material_group"], frozenset(json.loads(r["regions_json"])),
-                            _as_utc(r["effective_from"]), _as_utc(r["effective_to"]))
+                            _as_utc(r["effective_from"]), _as_utc(r["effective_to"]),
+                            int(r["annual_discount"] or 0))
 
     def get_subscription(self, subscription_id: str) -> Subscription | None:
         with self.engine.connect() as conn:
@@ -485,6 +492,7 @@ class PlatformAdminRepository:
         self._upsert(users, users.c.user_id, user.user_id, {
             "user_id": user.user_id, "company_id": user.company_id, "email": user.email,
             "role": user.role, "scope_json": _scope_json(user.scope), "active": user.active,
+            "name": str(user.name or "").strip(),
         })
 
     def get_user(self, user_id: str) -> UserAccess | None:
@@ -492,12 +500,12 @@ class PlatformAdminRepository:
             r = conn.execute(select(users).where(users.c.user_id == user_id)).mappings().first()
         if not r:
             return None
-        return UserAccess(r["user_id"], r["company_id"], r["email"], r["role"], scope_from_dict(json.loads(r["scope_json"])), bool(r["active"]))
+        return UserAccess(r["user_id"], r["company_id"], r["email"], r["role"], scope_from_dict(json.loads(r["scope_json"])), bool(r["active"]), str(r["name"] or ""))
 
     def list_users(self, company_id: str) -> list[UserAccess]:
         with self.engine.connect() as conn:
             rows = conn.execute(select(users).where(users.c.company_id == company_id).order_by(users.c.email)).mappings().all()
-        return [UserAccess(r["user_id"], r["company_id"], r["email"], r["role"], scope_from_dict(json.loads(r["scope_json"])), bool(r["active"])) for r in rows]
+        return [UserAccess(r["user_id"], r["company_id"], r["email"], r["role"], scope_from_dict(json.loads(r["scope_json"])), bool(r["active"]), str(r["name"] or "")) for r in rows]
 
     def find_user_by_email(self, email: str) -> UserAccess | None:
         normalized = email.strip().lower()
@@ -505,7 +513,7 @@ class PlatformAdminRepository:
             rows = conn.execute(select(users)).mappings().all()
         for r in rows:
             if str(r["email"]).strip().lower() == normalized:
-                return UserAccess(r["user_id"], r["company_id"], r["email"], r["role"], scope_from_dict(json.loads(r["scope_json"])), bool(r["active"]))
+                return UserAccess(r["user_id"], r["company_id"], r["email"], r["role"], scope_from_dict(json.loads(r["scope_json"])), bool(r["active"]), str(r["name"] or ""))
         return None
 
     def get_user_credential(self, email: str) -> UserCredential | None:
