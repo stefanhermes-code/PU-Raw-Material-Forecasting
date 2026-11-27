@@ -147,7 +147,7 @@ from raw_material_forecasting.fx import DEFAULT_DISPLAY_CURRENCY, DISPLAY_CURREN
 from raw_material_forecasting.source_status import classify_source, next_check_text, price_matrix, price_matrix_table, summarize as summarize_sources, window_by_source
 from raw_material_forecasting.platform_admin.access import allowed_application_pages, entitled_chemicals as chemicals_within_entitlement, filter_entitled_values, identity_allowed
 from raw_material_forecasting.platform_admin.models import RuntimeAccess
-from raw_material_forecasting.platform_admin.service import PlatformAdminError
+from raw_material_forecasting.platform_admin.service import PlatformAdminError, said_to_the_customer
 from raw_material_forecasting.platform_admin.ui import build_service as build_platform_admin_service, render_platform_admin
 from raw_material_forecasting.platform_admin.auth import PLATFORM_ADMIN_EMAIL, login_enabled, normalise_email
 from raw_material_forecasting.platform_admin.navigation import PLATFORM_ADMIN_PAGE, application_pages
@@ -316,7 +316,9 @@ def _render_sign_in(service) -> None:
             try:
                 service.sign_in(email, password)
             except PlatformAdminError as exc:
-                st.error(str(exc))
+                # The customer's sentence where the refusal carries one (v1.2.139): "Your access
+                # starts on 1 December 2026", not "company has no entitlement and holds no product".
+                st.error(said_to_the_customer(exc) or str(exc))
             else:
                 st.session_state[SIGNED_IN_EMAIL] = normalise_email(email)
                 st.rerun()
@@ -412,7 +414,7 @@ def resolve_runtime_access() -> RuntimeAccess | None:
         return service.resolve_user_access(email)
     except PlatformAdminError as exc:
         render_brand_header()
-        st.error(f"Application access denied: {exc}")
+        st.error(said_to_the_customer(exc) or f"Application access denied: {exc}")
         if _signed_in_email() and st.button("Sign out", key="denied_signout"):
             _sign_out()
         st.stop()

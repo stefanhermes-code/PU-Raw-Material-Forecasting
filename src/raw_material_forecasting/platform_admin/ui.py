@@ -1008,6 +1008,13 @@ def _render_users(service: PlatformAdminService) -> None:
     if not company_id:
         return
     users = service.repo.list_users(company_id)
+    # An account is prepared before its first day (v1.2.139). Said here so that a user who cannot
+    # sign in yet is not taken for a mistake.
+    starts = service.access_starts_on(company_id)
+    if starts is not None:
+        st.info(f"Nothing this customer holds is in force yet: their access starts on "
+                f"{starts.day} {starts:%B %Y}. Users and passwords can be made now; they can "
+                "sign in from that day.")
 
     def form(editing: UserAccess | None) -> None:
         mark = form_mark(editing.user_id if editing else None)

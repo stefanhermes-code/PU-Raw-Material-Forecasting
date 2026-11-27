@@ -63,6 +63,21 @@ class ConfigurationError(PlatformAdminError):
     pass
 
 
+def said_to_the_customer(error: Exception) -> str | None:
+    """The sentence for the person at the door, where the refusal carries one.
+
+    A refusal is written twice since v1.2.139: once for us, which is `str(error)` and what the
+    change history, the tests and Platform Admin read, and once for the customer who has just
+    proved their password. Raj Ratnam's buyer signing in a day before Sheela Foam's product
+    starts would have read "company has no entitlement and holds no product: SHEELA-FOAM".
+    """
+    return getattr(error, "for_the_customer", None)
+
+
+def _day(value: date) -> str:
+    return f"{value.day} {value:%B %Y}"
+
+
 def _jsonable(value):
     if isinstance(value, EntitlementScope):
         return scope_to_dict(value)
@@ -304,14 +319,112 @@ class PlatformAdminService:
                 result = merge_scope(result, self.subscription_scope(one))
         return result
 
+    def scope_held_or_to_come(self, company_id: str, *, at: datetime | None = None) -> EntitlementScope:
+        """What a user of this customer may be given: what it holds today and what has yet to start.
+
+        v1.2.139. Sheela Foam accepted on 26 November 2026 for a product that starts later, and
+        the account could not be prepared: `create_user` asked what the company holds TODAY, a
+        product that has not started is not held today, and the answer was "company has no
+        entitlement and holds no product". Stefan would have had to wait for the first morning
+        of the subscription to make the users and hand out their passwords.
+
+        Nothing is opened early by this. What a user sees is worked out at every sign-in from
+        what is in force that day (`resolve_user_access`); this only decides what a user may be
+        NAMED for. Direct Access products that have yet to start count, and so does a contractual
+        entitlement that has yet to start, which is the same account prepared the other way.
+        """
+        at = at or self._now()
+        to_come = [self.subscription_scope(one) for one in self.repo.list_subscriptions(company_id)
+                   if one.product == products.DIRECT_ACCESS and one.effective_from > at
+                   and (one.effective_to is None or one.effective_to > one.effective_from)]
+        permanent = self.repo.get_company_entitlement(company_id)
+        if (permanent is not None and permanent.effective_from > at
+                and (permanent.effective_to is None
+                     or permanent.effective_to > permanent.effective_from)):
+            to_come.append(permanent.scope)
+        try:
+            result = self.effective_company_scope(company_id, at=at)
+        except ConfigurationError:
+            if not to_come:
+                raise
+            result = EntitlementScope()
+        for scope in to_come:
+            result = merge_scope(result, scope)
+        return result
+
+    def _access_windows(self, company: Company) -> list[tuple[date, date | None]]:
+        """Every stretch in which this customer may open the application: (first day, end).
+
+        The end is the day the page that set it calls its end - a product's "Ends on", a
+        contract's last day - or None for one that runs on.
+        """
+        windows: list[tuple[date, date | None]] = []
+        for one in self.repo.list_subscriptions(company.company_id):
+            if one.product != products.DIRECT_ACCESS:
+                continue
+            if one.effective_to is not None and one.effective_to <= one.effective_from:
+                continue                                  # deleted before it ever started
+            windows.append((one.effective_from.date(),
+                            one.effective_to.date() if one.effective_to else None))
+        permanent = self.repo.get_company_entitlement(company.company_id)
+        if permanent is not None and permanent.scope.application_access:
+            first = max(permanent.effective_from.date(), company.contract_effective_from)
+            ends = [end for end in (
+                permanent.effective_to.date() if permanent.effective_to else None,
+                company.contract_effective_to) if end is not None]
+            last = min(ends) if ends else None
+            if last is None or last >= first:
+                windows.append((first, last))
+        return windows
+
+    def access_starts_on(self, company_id: str, *, at: datetime | None = None) -> date | None:
+        """The day this customer's access begins, when it has not begun yet. Otherwise None."""
+        company = self.repo.get_company(company_id)
+        if company is None:
+            return None
+        at = at or self._now()
+        try:
+            if self.effective_company_scope(company_id, at=at).application_access:
+                return None
+        except ConfigurationError:
+            pass
+        to_come = [first for first, _last in self._access_windows(company) if first > at.date()]
+        return min(to_come) if to_come else None
+
+    def _words_when_nothing_opens(self, company: Company, at: datetime) -> str:
+        """What to say to a customer whom the dates, or what was bought, keep out today."""
+        today = at.date()
+        windows = self._access_windows(company)
+        to_come = [first for first, _last in windows if first > today]
+        if to_come:
+            return (f"Your access starts on {_day(min(to_come))}. "
+                    "You can sign in from that day.")
+        ended = [last for first, last in windows if last is not None and first <= today]
+        if ended:
+            return (f"Your access ended on {_day(max(ended))}. "
+                    f"To continue, write to {PLATFORM_ADMIN_EMAIL}.")
+        return ("Your subscription does not include access to this application. "
+                f"Write to {PLATFORM_ADMIN_EMAIL}.")
+
+    @staticmethod
+    def _refused(ours: str, theirs: str) -> EntitlementViolation:
+        refusal = EntitlementViolation(ours)
+        refusal.for_the_customer = theirs
+        return refusal
+
 
     def resolve_user_access(self, email: str, *, at: datetime | None = None) -> RuntimeAccess:
         user = self.repo.find_user_by_email(email)
         if user is None or not user.active:
-            raise EntitlementViolation("no active application user is configured for this identity")
+            raise self._refused(
+                "no active application user is configured for this identity",
+                f"This account is switched off. Write to {PLATFORM_ADMIN_EMAIL}.")
         company = self.repo.get_company(user.company_id)
         if company is None or company.status not in {"ACTIVE", "TRIAL"}:
-            raise EntitlementViolation("the user's company is not active")
+            raise self._refused(
+                "the user's company is not active",
+                "Access for your company is switched off at the moment. "
+                f"Write to {PLATFORM_ADMIN_EMAIL}.")
         # The contract dates decide what the CONTRACT gives: the contractual entitlement and any
         # temporary grant. A product decides for itself, by its own start and end (v1.2.134).
         #
@@ -324,12 +437,25 @@ class PlatformAdminService:
         today = at.date()
         in_contract = not (today < company.contract_effective_from or (
             company.contract_effective_to is not None and today > company.contract_effective_to))
-        parent = self.effective_company_scope(user.company_id, at=at, contract_in_force=in_contract)
+        try:
+            parent = self.effective_company_scope(user.company_id, at=at,
+                                                  contract_in_force=in_contract)
+        except ConfigurationError as nothing_held:
+            # Ours stays as it is - the same error, the same words. The customer's is added.
+            nothing_held.for_the_customer = self._words_when_nothing_opens(company, at)
+            raise
         if not in_contract and not parent.application_access:
-            raise EntitlementViolation("the company's contract is not active")
+            raise self._refused("the company's contract is not active",
+                                self._words_when_nothing_opens(company, at))
         scope = intersect_scope(parent, user.scope)
         if not scope.application_access:
-            raise EntitlementViolation("application access is not included in the active entitlement")
+            # The company may open the application and this user may not: that is not about dates.
+            theirs = (self._words_when_nothing_opens(company, at)
+                      if not parent.application_access else
+                      "Your account does not include access to this application. "
+                      f"Write to {PLATFORM_ADMIN_EMAIL}.")
+            raise self._refused("application access is not included in the active entitlement",
+                                theirs)
         return RuntimeAccess(company=company, user=user, scope=scope)
 
     # ----------------------------------------------------------------- signing a customer in
@@ -420,7 +546,9 @@ class PlatformAdminService:
 
     def create_user(self, user: UserAccess, *, actor: str, reason: str) -> UserAccess:
         self._who_and_why(actor, reason)
-        parent = self.effective_company_scope(user.company_id)
+        # What the company holds today AND what it has bought that has yet to start (v1.2.139):
+        # an account is prepared before its first day, not on it.
+        parent = self.scope_held_or_to_come(user.company_id)
         if not user_scope_fits(parent, user.scope):
             raise EntitlementViolation("user scope exceeds the company's effective entitlement")
         old = self.repo.get_user(user.user_id)
